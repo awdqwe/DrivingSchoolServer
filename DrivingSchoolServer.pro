@@ -1,4 +1,4 @@
-QT += quick virtualkeyboard quickcontrols2 network # 加载网络功能
+QT += quick virtualkeyboard quickcontrols2 network sql # 加载网络、SQLite功能
 
 CONFIG += c++11
 
@@ -14,11 +14,11 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+        dbmanager.cpp \
         main.cpp \
         tcpbackend.cpp
 
-RESOURCES += qml.qrc \
-    res.qrc
+RESOURCES += qml.qrc
 
 # Additional import path used to resolve QML modules in Qt Creator's code model
 QML_IMPORT_PATH =
@@ -32,4 +32,5 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
 HEADERS += \
+    dbmanager.h \
     tcpbackend.h

@@ -35,7 +35,7 @@ Window {
             onClicked: {
                 // 直接调用 C++ 里的 startServer 函数，并传入端口号 8888
                 backend.startServer(8888)
-                enabled = false // 点了一次就禁用按钮，防止重复启动
+                enabled = false // 点击一次即禁用按钮，防止重复启动
                 text = "运行中 (端口: 8888)..."
             }
         }
