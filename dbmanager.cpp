@@ -31,7 +31,7 @@ bool DbManager::initDb(){
     QString createTableSql = R"(
             CREATE TABLE IF NOT EXISTS students (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                card_id TEXT NOT NULL,
+                card_id TEXT NOT NULL UNIQUE,
                 name TEXT NOT NULL,
                 total_seconds INTEGER DEFAULT 0
             )

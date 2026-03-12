@@ -6,7 +6,7 @@ import Backend 1.0
 
 Window {
     visible: true
-    width: 1080  // 窗口
+    width: 1200  // 窗口
     height: 600
     title: qsTr("驾校智能车载终端与管理中枢 - 实时监控系统")
     color: "#f0f2f5" // 底色 灰白
@@ -109,15 +109,16 @@ Window {
             Rectangle {
                 Layout.fillWidth: true
                 height: 40
-                color: "#dcdde1"
+                color: "#dcdde1" // 白色
                 radius: 6
                 RowLayout {
                     anchors.fill: parent
                     anchors.margins: 15
-                    Label { text: "ID"; Layout.preferredWidth: 50; font.bold: true }
+                    Label { text: "ID"; Layout.preferredWidth: 40; font.bold: true }
                     Label { text: "学员姓名"; Layout.preferredWidth: 100; font.bold: true }
                     Label { text: "物理卡号"; Layout.preferredWidth: 100; font.bold: true }
-                    Label { text: "车辆动作"; Layout.preferredWidth: 100; font.bold: true }
+                    Label { text: "车辆动作"; Layout.preferredWidth: 90; font.bold: true }
+                    Label { text: "练习时长"; Layout.preferredWidth: 80; font.bold: true }
                     Label { text: "服务器落盘时间"; Layout.fillWidth: true; font.bold: true }
                 }
             }
@@ -141,22 +142,28 @@ Window {
                     RowLayout {
                         anchors.fill: parent
                         anchors.margins: 15
-                        Label { text: model.id; Layout.preferredWidth: 50; color: "#7f8c8d" }
+                        Label { text: model.id; Layout.preferredWidth: 40; color: "#7f8c8d" }
                         // 学员姓名
                         Label {
                             text: model.student_name  // 对应 C++ 的 student_name
                             Layout.preferredWidth: 100
                             font.bold: true
-                            color: "#8e44ad"  // 紫色区分
+                            color: model.student_name === "访客" ? "#95a5a6" : "#8e44ad"
                         }
                         Label { text: model.card_id; Layout.preferredWidth: 100; font.bold: true; color: "#2980b9" }
 
-                        // 动态变色 如果“上车”显示绿色，否则显示橙色
+                        // 动态变色 登录绿色 登出橙色 拦截红色
                         Label {
                             text: model.action
-                            Layout.preferredWidth: 100
+                            Layout.preferredWidth: 90
                             font.bold: true
-                            color: model.action.indexOf("上车") !== -1 ? "#27ae60" : "#e67e22"
+                            color: model.action === "上车签到" ? "#27ae60" : (model.action === "下车签退" ? "#e67e22" : "#e74c3c")                        }
+                        // 时长
+                        Label {
+                            text: model.duration > 0 ? model.duration + " 秒" : "--"
+                            Layout.preferredWidth: 80
+                            font.bold: true
+                            color: "#e1b12c"
                         }
 
                         Label { text: model.timestamp; Layout.fillWidth: true; color: "#95a5a6" }

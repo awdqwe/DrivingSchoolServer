@@ -37,6 +37,7 @@ private slots:
 private:
     QTcpServer *m_server;
     DbManager m_db; // TCP 后端的数据库管理器
+    QHash<QTcpSocket*, QByteArray> m_buffers; // 接收缓冲区(防止粘包)
 };
 
 #endif // TCPBACKEND_H

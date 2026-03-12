@@ -12,8 +12,6 @@
 
 #include <QVariantList> // 打包数据成列表
 #include <QVariantMap> // 把一行数据打包成字典
-//#include <QVariant>
-
 
 class DbManager : public QObject
 {
