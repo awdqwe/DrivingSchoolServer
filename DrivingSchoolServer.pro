@@ -34,3 +34,6 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 HEADERS += \
     dbmanager.h \
     tcpbackend.h
+
+DISTFILES += \
+    README.md
