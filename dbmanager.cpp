@@ -2,8 +2,7 @@
 #include <QDir>
 #include <QCoreApplication>
 
-DbManager::DbManager(QObject *parent) : QObject(parent){
-}
+DbManager::DbManager(QObject *parent) : QObject(parent){}
 
 //数据表初始化
 bool DbManager::initDb(){
