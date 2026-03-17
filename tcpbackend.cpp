@@ -66,7 +66,7 @@ void TcpBackend::onReadyRead(){
 
         QString rawMsg = QString::fromUtf8(oneMsg);
 
-        emit messageReceived("[收到车辆数据]: " + rawMsg);
+        emit messageReceived("[收到车辆数据]" + rawMsg);
 
         QJsonParseError jsonError;
         QJsonDocument doc = QJsonDocument::fromJson(oneMsg, &jsonError);
@@ -94,6 +94,7 @@ void TcpBackend::onReadyRead(){
                     replyObj["status"] = "success";
                     replyObj["name"] = stuName;
                     replyObj["action"] = action;
+                    replyObj["duration"] = duration;
 
                     QJsonDocument replyDoc(replyObj);
                     QByteArray replyData = replyDoc.toJson(QJsonDocument::Compact) + "\n";
@@ -131,4 +132,8 @@ void TcpBackend::onDisconnected(){
 // 获取数据
 QVariantList TcpBackend::getHistoryRecords(){
     return m_db.getAllRecords();
+}
+// 新建
+bool TcpBackend::registerNewStudent(const QString &cardId, const QString &name) {
+    return m_db.addStudent(cardId, name);
 }

@@ -19,6 +19,8 @@ public:
     Q_INVOKABLE void startServer(int port);
     // 查询
     Q_INVOKABLE QVariantList getHistoryRecords();
+    // 新增
+    Q_INVOKABLE bool registerNewStudent(const QString &cardId, const QString &name);
 
 signals:
     // 当 C++ 收到消息或者有状态更新时 发信号给 QML

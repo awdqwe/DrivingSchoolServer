@@ -1,4 +1,5 @@
-QT += quick virtualkeyboard quickcontrols2 network sql # 加载网络、SQLite功能
+#QT += quick virtualkeyboard quickcontrols2 network sql # 加载网络、SQLite功能
+QT += core gui qml quick sql network charts widgets
 
 CONFIG += c++11
 

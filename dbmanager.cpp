@@ -53,8 +53,8 @@ bool DbManager::initDb(){
     }
 
     // 当前直接硬编码写入一个学员  TODO:学员注册逻辑
-    addStudent("B3D10F07", "张三 (VIP学员)");
-    addStudent("69AB2A07", "李四 (普通学员)");
+    // addStudent("B3D10F07", "张三 (VIP学员)");
+    // addStudent("69AB2A07", "李四 (普通学员)");
 
 
     qDebug() << "[成功]数据表初始化完成.";

@@ -32,8 +32,9 @@ public:
     /* 注册账户(加入新学员)
      * @cardId 卡号
      * @name 用户名
+     * @Q_INVOKABLE 让 QML 直接调用注册
     */
-    bool addStudent(const QString &cardId, const QString &name);
+    Q_INVOKABLE bool addStudent(const QString &cardId, const QString &name);
 
     // 获取/查询所有历史记录
     QVariantList getAllRecords();

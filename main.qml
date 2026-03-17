@@ -155,6 +155,23 @@ Window {
                                 serverRunning = true
                             }
                         }
+
+                        // 打开弹窗
+                        Button {
+                            text: "注册新学员"
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 50
+                            font.pixelSize: 16
+                            background: Rectangle {color: "#3498DB"; radius: 6}
+                            contentItem: Text {
+                                color: white
+                                text: parent.text
+                                font.bold: true
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                            onClicked: registerDialog.open()
+                        }
                     }
                 }
 
@@ -314,4 +331,56 @@ Window {
         }
     }
 
+
+    // 学员发卡注册弹窗
+    Dialog {
+        id: registerDialog
+        x: (parent.width - width) / 2
+        y: (parent.height - height) / 2
+        width: 400
+        height: 300
+        title: "学员开户与发卡"
+        standardButtons: Dialog.Save | Dialog.Cancel
+
+        ColumnLayout {
+            anchors.centerIn: parent
+            spacing: 20
+
+            TextField {
+                id: nameInput
+                placeholderText: "请输入学员姓名"
+                Layout.fillWidth: true
+                font.pixelSize: 16
+            }
+
+            TextField {
+                id: cardInput
+                placeholderText: "请输入物理卡号 (如 A1B2C3D4)"
+                Layout.fillWidth: true
+                font.pixelSize: 16
+            }
+
+            Label {
+                text: "提示: 请先在车载端刷未注册的卡获取卡号"
+                color: "#7f8c8d"
+                font.pixelSize: 12
+            }
+        }
+
+        onAccepted: {
+            if (nameInput.text === "" || cardInput.text === "") {
+                logArea.append("> [错误] 姓名或卡号不能为空！")
+                return
+            }
+            // 调用 C++ 的注册函数
+            var success = backend.registerNewStudent(cardInput.text, nameInput.text)
+            if (success) {
+                logArea.append("> [系统] 学员 " + nameInput.text + " 注册成功！")
+            } else {
+                logArea.append("> [错误] 注册失败，可能卡号已存在。")
+            }
+            nameInput.text = ""
+            cardInput.text = ""
+        }
+    }
 }
