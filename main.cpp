@@ -1,5 +1,7 @@
-#include <QGuiApplication>
+// #include <QGuiApplication>
+#include <QApplication>
 #include <QQmlApplicationEngine>
+#include <QQmlContext>
 #include <QIcon>
 #include "tcpbackend.h" // TCP服务
 #include "dbmanager.h"  // DB服务
@@ -10,7 +12,7 @@ int main(int argc, char *argv[])
 
     QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 
-    QGuiApplication app(argc, argv);
+    QApplication app(argc, argv);
 
     app.setWindowIcon(QIcon(":/res/ico/icon.ico"));
 

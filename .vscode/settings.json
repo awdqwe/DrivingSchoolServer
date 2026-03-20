@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "syncstream": "cpp",
+        "chrono": "cpp"
+    }
+}

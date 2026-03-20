@@ -27,7 +27,15 @@ public:
      * @action 动作
      * @duration 时长
     */
-    bool insertRecord(const QString &cardId, const QString &action, int duration);
+    bool insertRecord(const QString &cardId, const QString &action, int duration, const QString &deviceId);
+    
+    /* 插入一条理论成绩记录
+     * @cardId 卡号
+     * @score 得分
+     * @total 总分
+     * @deviceId 设备号
+    */
+    bool insertTheoryResult(const QString cardId, int score, int total, const QString deviceId);
 
     /* 注册账户(加入新学员)
      * @cardId 卡号
@@ -36,8 +44,14 @@ public:
     */
     Q_INVOKABLE bool addStudent(const QString &cardId, const QString &name);
 
+    //
+    QVariantList getTheoryScores();
+
     // 获取/查询所有历史记录
     QVariantList getAllRecords();
+
+    // 获取排行榜数据
+    QVariantList getLeaderboard();
 
 private:
 //    bool ensureSchema();

@@ -2,6 +2,8 @@
 #define TCPBACKEND_H
 
 #include <QObject>
+#include <QDateTime>
+#include <QTimer>
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QDebug>
@@ -21,6 +23,16 @@ public:
     Q_INVOKABLE QVariantList getHistoryRecords();
     // 新增
     Q_INVOKABLE bool registerNewStudent(const QString &cardId, const QString &name);
+    // 获取排行榜数据
+    Q_INVOKABLE QVariantList getLeaderboard(){ return m_db.getLeaderboard(); }
+
+    struct SessionInfo {
+      QString cardId;
+      QDateTime lastSeen;
+      QDateTime startTime;
+    };
+    QMap<QString, SessionInfo> m_activeSessions; // 记录每个设备的会话信息
+    QTimer *m_checkTimer; // 检查超时的定时器
 
 signals:
     // 当 C++ 收到消息或者有状态更新时 发信号给 QML
@@ -40,6 +52,7 @@ private:
     QTcpServer *m_server;
     DbManager m_db; // TCP 后端的数据库管理器
     QHash<QTcpSocket*, QByteArray> m_buffers; // 接收缓冲区(防止粘包)
+    bool verifySignature(const QJsonObject &obj); //安全校验
 };
 
 #endif // TCPBACKEND_H

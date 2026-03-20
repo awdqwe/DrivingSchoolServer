@@ -1,9 +1,10 @@
 import QtQuick 2.14
 import QtQuick.Window 2.14
 import QtQuick.Controls 2.14
+import QtCharts 2.14
 import QtQuick.Layouts 1.14 // 引入专业布局模块
 import Backend 1.0
-
+import "qml_helpers.js" as Helpers
 Window {
     visible: true
     width: 1200  // 窗口
@@ -20,29 +21,19 @@ Window {
 
     TcpBackend {
         id: backend
-
-        onMessageReceived: {
-            logArea.append("> " + msg)
-        }
+        onMessageReceived: logArea.append("> " + msg)
 
         // 当收到 C++ 发来的数据库更新信号时，自动刷新界面表格
-        onDatabaseUpdated: {
-            refreshTable()
+        onDatabaseUpdated: { 
+            Helpers.refreshTable(historyModel, backend)
+            Helpers.refreshChart(barSeries, xAxis, yAxis, backend)
         }
     }
 
-    // 页面刚加载完毕时，查一次数据库，显示历史记录
+    // 页面刚加载完毕时，查一次 显示历史记录
     Component.onCompleted: {
-        refreshTable()
-    }
-
-    // 封装 刷新表格的函数
-    function refreshTable() {
-        historyModel.clear() // 先清空旧数据
-        var records = backend.getHistoryRecords() // 调用 C++ 获取最新数据
-        for (var i = 0; i < records.length; i++) {
-            historyModel.append(records[i]) // 塞入模型，界面自动渲染
-        }
+        Helpers.refreshTable(historyModel, backend)
+        Helpers.refreshChart(barSeries, xAxis, yAxis, backend)
     }
 
     // 主布局
@@ -164,7 +155,7 @@ Window {
                             font.pixelSize: 16
                             background: Rectangle {color: "#3498DB"; radius: 6}
                             contentItem: Text {
-                                color: white
+                                color: "white"
                                 text: parent.text
                                 font.bold: true
                                 horizontalAlignment: Text.AlignHCenter
@@ -215,74 +206,123 @@ Window {
                         ColumnLayout {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
+                            spacing: 15
 
                             RowLayout {
 
                                 Label {
-                                    text: "训练历史记录"
+                                    text: "打卡历史记录"
                                     font.pixelSize: 18
                                     font.bold: true
+                                    color: "#2c3e50"
                                 }
 
                                 Item { Layout.fillWidth: true }
 
                                 Button {
                                     text: "刷新"
-                                    onClicked: refreshTable()
+                                    onClicked:{ // 刷新表格与图表
+                                        Helpers.refreshTable(historyModel, backend)
+                                        Helpers.refreshChart(barSeries, xAxis, yAxis, backend)
+                                    }
                                 }
                             }
 
+                            // 历史记录表格 
                             Rectangle {
                                 Layout.fillWidth: true
-                                height: 40
-                                color: "#dcdde1"
+                                Layout.fillHeight: true
+                                radius: 6
+                                color: "transparent"
+                                border.color: "#dcdde1"
 
-                                RowLayout {
+                                ColumnLayout {
                                     anchors.fill: parent
-                                    anchors.margins: 10
+                                    spacing: 0
+                                    // 表头
+                                    Rectangle {
+                                        Layout.fillWidth: true
+                                        height: 40
+                                        color: "#dcdde1"
+                                        RowLayout {
+                                            anchors.fill: parent; anchors.margins: 15
+                                            Label { text: "ID"; Layout.preferredWidth: 40; font.bold: true }
+                                            Label { text: "姓名"; Layout.preferredWidth: 100; font.bold: true }
+                                            Label { text: "卡号"; Layout.preferredWidth: 100; font.bold: true }
+                                            Label { text: "动作"; Layout.preferredWidth: 90; font.bold: true }
+                                            Label { text: "时长"; Layout.preferredWidth: 80 ; font.bold: true}
+                                            Label { text: "时间"; Layout.fillWidth: true; font.bold: true }
+                                        }
+                                    }
+                                    // 主体
+                                    ListView {
+                                        Layout.fillWidth: true
+                                        Layout.fillHeight: true
+                                        model: historyModel
+                                        clip: true
 
-                                    Label { text: "ID"; Layout.preferredWidth: 40 }
-                                    Label { text: "姓名"; Layout.preferredWidth: 100 }
-                                    Label { text: "卡号"; Layout.preferredWidth: 120 }
-                                    Label { text: "动作"; Layout.preferredWidth: 100 }
-                                    Label { text: "时长"; Layout.preferredWidth: 80 }
-                                    Label { text: "时间"; Layout.fillWidth: true }
+                                        delegate: Rectangle {
+
+                                            width: ListView.view.width
+                                            height: 45
+                                            color: index % 2 ? "#f9f9f9" : "#ffffff"
+                                            border.color: "#eeeeee"
+                                            RowLayout {
+                                                anchors.fill: parent
+                                                anchors.margins: 15
+
+                                                Label { text: model.id; Layout.preferredWidth: 40; color: "#7f8c8d" }
+                                                Label { text: model.student_name; Layout.preferredWidth: 100; font.bold: true; color: "#8e44ad" }
+                                                Label { text: model.card_id; Layout.preferredWidth: 100; font.bold: true; color: "#2980b9" }
+                                                Label {
+                                                    text: model.action
+                                                    Layout.preferredWidth: 90
+                                                    font.bold: true
+                                                    color: model.action === "上车签到" ? "green" :
+                                                        model.action === "下车签退" ? "orange" : "red"
+                                                }
+
+                                                Label {
+                                                    text: model.duration > 0 ? model.duration + " 秒" : "--"
+                                                    Layout.preferredWidth: 80
+                                                    font.bold: true; color: "#e1b12c"
+                                                }
+
+                                                Label { text: model.timestamp; Layout.fillWidth: true; color: "#95a5a6" }
+                                            }
+                                        }
+                                    }
                                 }
                             }
 
-                            ListView {
+                            // 数据可视化看板
+                            ChartView {
+                                id: leaderboardChart
+                                title: "学员累计学时排行榜"
+                                titleFont.pixelSize: 16
+                                titleFont.bold: true
                                 Layout.fillWidth: true
-                                Layout.fillHeight: true
-                                model: historyModel
-                                spacing: 4
+                                Layout.preferredHeight: 280
+                                antialiasing: true
+                                theme: ChartView.ChartThemeLight
+                                margins { top: 10; bottom: 10; left: 10; right: 10 }
+                                
+                                // 背景美化
+                                backgroundColor: "#ffffff"
+                                dropShadowEnabled: true
 
-                                delegate: Rectangle {
-
-                                    width: ListView.view.width
-                                    height: 45
-                                    color: index % 2 ? "#f9f9f9" : "#ffffff"
-
-                                    RowLayout {
-                                        anchors.fill: parent
-                                        anchors.margins: 10
-
-                                        Label { text: model.id; Layout.preferredWidth: 40 }
-                                        Label { text: model.student_name; Layout.preferredWidth: 100 }
-                                        Label { text: model.card_id; Layout.preferredWidth: 120 }
-
-                                        Label {
-                                            text: model.action
-                                            Layout.preferredWidth: 100
-                                            color: model.action === "上车签到" ? "green" :
-                                                   model.action === "下车签退" ? "orange" : "red"
-                                        }
-
-                                        Label {
-                                            text: model.duration > 0 ? model.duration + " 秒" : "--"
-                                            Layout.preferredWidth: 80
-                                        }
-
-                                        Label { text: model.timestamp; Layout.fillWidth: true }
+                                BarSeries {
+                                    id: barSeries
+                                    axisX: BarCategoryAxis { 
+                                        id: xAxis 
+                                        labelsFont.pixelSize: 12
+                                    }
+                                    axisY: ValueAxis { 
+                                        id: yAxis
+                                        min: 0
+                                        max: 100
+                                        titleText: "总计学时 (秒)" 
+                                        labelFormat: "%d"
                                     }
                                 }
                             }

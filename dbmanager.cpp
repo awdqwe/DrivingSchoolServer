@@ -43,19 +43,27 @@ bool DbManager::initDb(){
                 card_id TEXT NOT NULL,
                 action TEXT NOT NULL,
                 duration INTEGER DEFAULT 0,
+                device_id TEXT NOT NULL,
                 timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
             )
     )";
 
-    if(!query.exec(createRecordsSql) || !query.exec(createTableSql)){
+    // 创建表：theory_results
+    QString createTheorySql = R"(
+        CREATE TABLE IF NOT EXISTS theory_results(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            card_id TEXT NOT NULL,
+            score INTEGER,
+            total INTEGER,
+            device_id TEXT NOT NULL,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    )";
+
+    if(!query.exec(createRecordsSql) || !query.exec(createTableSql) || !query.exec(createTheorySql)){
         qDebug() << "[错误]创建数据表失败:" << query.lastError().text();
         return false;
     }
-
-    // 当前直接硬编码写入一个学员  TODO:学员注册逻辑
-    // addStudent("B3D10F07", "张三 (VIP学员)");
-    // addStudent("69AB2A07", "李四 (普通学员)");
-
 
     qDebug() << "[成功]数据表初始化完成.";
     return true;
@@ -70,22 +78,22 @@ bool DbManager::addStudent(const QString &cardId, const QString &name){
     return query.exec();
 }
 
-// 写数据
-bool DbManager::insertRecord(const QString &cardId, const QString &action, int duration){
+// 写数据 刷卡
+bool DbManager::insertRecord(const QString &cardId, const QString &action, int duration, const QString &deviceId){
     if (!main_db.isOpen()) return false;
 
-    // 数据库事务(Transaction)
-    // 保证“插入记录”和“累加学时” 同时成功/同时失败
+    // 事务(Transaction) 保证“插入记录”和“累加学时” 同时成功/同时失败
     main_db.transaction();
 
     QSqlQuery query;
-    // 1 插入打卡记录
+    // 1 插入打卡记录(是第一次刷卡)
 
     // [防注入]使用 prepare 预处理语句，而不是直接拼接字符串
-    query.prepare("INSERT INTO records (card_id, action, duration) VALUES (:card_id, :action, :duration)");
+    query.prepare("INSERT INTO records (card_id, action, duration, device_id) VALUES (:card_id, :action, :duration, :device_id)");
     query.bindValue(":card_id", cardId);
     query.bindValue(":action", action);
     query.bindValue(":duration", duration);
+    query.bindValue(":device_id", deviceId);
 
     if(!query.exec()) {
         qDebug() << "[错误]插入数据失败:" << query.lastError().text();
@@ -108,9 +116,27 @@ bool DbManager::insertRecord(const QString &cardId, const QString &action, int d
     main_db.commit(); // 提交事务
     return true;
 }
+// 写数据 刷卡后的练习
+bool DbManager::insertTheoryResult(QString cardId, int score, int total, const QString deviceId){
+    if (!main_db.isOpen()) return false;
+    main_db.transaction();
 
-QVariantList DbManager::getAllRecords()
-{
+    QSqlQuery query;
+    query.prepare("INSERT INTO theory_results (card_id, score, total, device_id) VALUES (?, ?, ?, ?)");
+    query.addBindValue(cardId);
+    query.addBindValue(score);
+    query.addBindValue(total);
+    query.addBindValue(deviceId);
+    if(!query.exec()) {
+        qDebug() << "[错误]插入数据失败:" << query.lastError().text();
+        main_db.rollback();
+        return false;
+    }
+
+    main_db.commit();
+    return true;
+}
+QVariantList DbManager::getAllRecords(){
     QVariantList list;
     if (!main_db.isOpen()) return list;
 
@@ -133,6 +159,43 @@ QVariantList DbManager::getAllRecords()
         map["action"] = query.value(3).toString();
         map["duration"] = query.value(4).toInt();
         map["timestamp"] = query.value(5).toString();
+        list.append(map);
+    }
+    return list;
+}
+
+QVariantList DbManager::getLeaderboard(){
+    QVariantList list;
+    if (!main_db.isOpen()) return list;
+
+    // 查询总学时大于 0 的学员，按学时降序排列，取前 5 名
+    QSqlQuery query("SELECT name, total_seconds FROM students WHERE total_seconds > 0 ORDER BY total_seconds DESC LIMIT 5");
+    
+    while(query.next()){
+        QVariantMap map;
+        map["name"] = query.value(0).toString();
+        map["total_seconds"] = query.value(1).toInt();
+        list.append(map);
+    }
+    return list;
+}
+
+QVariantList DbManager::getTheoryScores(){
+    QVariantList list;
+    // 使用 LEFT JOIN 关联学生姓名
+    QString sql = R"(
+        SELECT s.name, t.score, t.total, t.timestamp
+        FROM theory_results t
+        LEFT JOIN students s ON t.card_id = s.card_id
+        ORDER BY t.timestamp DESC
+    )";
+    QSqlQuery query(sql);
+    while(query.next()){
+        QVariantMap map;
+        map["name"] = query.value(0).toString();
+        map["score"] = query.value(1).toInt();
+        map["total"] = query.value(2).toInt();
+        map["time"] = query.value(3).toString();
         list.append(map);
     }
     return list;

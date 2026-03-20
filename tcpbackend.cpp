@@ -2,6 +2,11 @@
 #include <QJsonDocument>  // JSON 文档类
 #include <QJsonObject>    // JSON 对象类
 #include <QJsonParseError>// JSON 错误处理类
+#include <QCryptographicHash>
+#include <QDebug>
+
+// salt 盐值
+QString secretKey = "HelloWorldDrivingSchool@2026_Pi4B";
 
 TcpBackend::TcpBackend(QObject *parent) : QObject(parent){
     m_server = new QTcpServer(this);
@@ -13,6 +18,33 @@ TcpBackend::TcpBackend(QObject *parent) : QObject(parent){
     if (m_db.initDb()) {
         qDebug() << "TCP后端引擎：数据库挂载成功！";
     }
+
+    // 启动检查定时器
+    m_checkTimer = new QTimer(this);
+
+    connect(m_checkTimer, &QTimer::timeout, this, [this](){
+        QDateTime now = QDateTime::currentDateTime();
+        QMutableMapIterator<QString, SessionInfo> i(m_activeSessions);
+
+        while (i.hasNext()) {
+            i.next();
+            // 如果超过 90 秒没收到心跳
+            if (i.value().lastSeen.secsTo(now) > 90) {
+                QString devId = i.key();
+                QString cardId = i.value().cardId;
+                int duration = i.value().startTime.secsTo(i.value().lastSeen);
+
+                // 自动生成一条“下车签退”记录
+                m_db.insertRecord(cardId, "系统异常签退", duration, devId);
+
+                emit messageReceived(QString("[超时处理] 设备 %1 失去连接，已自动结算学员 %2 的学时").arg(devId).arg(cardId));
+
+                i.remove(); // 从活动名册中移除
+                emit databaseUpdated();
+            }
+        }
+    });
+    m_checkTimer->start(10000); // 每 10 秒扫描一次名册
 }
 
 // 供 QML 调用的启动服务器函数
@@ -67,53 +99,91 @@ void TcpBackend::onReadyRead(){
         QString rawMsg = QString::fromUtf8(oneMsg);
 
         emit messageReceived("[收到车辆数据]" + rawMsg);
+        qDebug()<<rawMsg<<endl;
 
         QJsonParseError jsonError;
         QJsonDocument doc = QJsonDocument::fromJson(oneMsg, &jsonError);
 
         if(jsonError.error == QJsonParseError::NoError && doc.isObject()){
             QJsonObject jsonObj = doc.object();
+            QString type = jsonObj.value("type").toString();
 
-            QString cardId = jsonObj.value("CardID").toString();
-            QString action = jsonObj.value("Action").toString();
-            int duration = jsonObj.value("Duration").toInt();
+            // 安全校验
+            if (!verifySignature(jsonObj)) {
+                emit messageReceived("[安全警告] 收到非法签名数据，已拦截！类型: " + type);
+                return;
+            }
 
-            if(!cardId.isEmpty() && !action.isEmpty()){
-                bool storageEnabled = m_db.insertRecord(cardId, action, duration);
-                if (storageEnabled) {
-                    // 查询学员姓名并回传给设备
+            if(type == "card"){
+                QString cardId = jsonObj.value("CardID").toString();
+                QString action = jsonObj.value("Action").toString();
+                int duration = jsonObj.value("Duration").toInt();
+                QString devId = jsonObj.value("device_id").toString();
+
+                // 格式校验
+                if(m_db.insertRecord(cardId, action, duration, devId)){
                     QSqlQuery queryUsr;
-                    queryUsr.prepare("SELECT name FROM students WHERE card_id = :card_id");
-                    queryUsr.bindValue(":card_id", cardId);
+                    queryUsr.prepare("SELECT name FROM students WHERE card_id = :id");
+                    queryUsr.bindValue(":id", cardId);
                     QString stuName = "未知学员";
-                    if(queryUsr.exec() && queryUsr.next()) stuName = queryUsr.value(0).toString();
+                    if(queryUsr.exec() && queryUsr.next())
+                        stuName = queryUsr.value(0).toString();
 
                     // 回复JSON
-                    QJsonObject replyObj;
-                    replyObj["type"] = "ack";
-                    replyObj["status"] = "success";
-                    replyObj["name"] = stuName;
-                    replyObj["action"] = action;
-                    replyObj["duration"] = duration;
+                    QJsonObject reply;
+                    reply["type"] = "ack";
+                    reply["status"] = "success";
+                    reply["CardID"] = cardId;
+                    reply["name"] = stuName;
+                    reply["action"] = action;
+                    reply["duration"] = duration;
 
-                    QJsonDocument replyDoc(replyObj);
-                    QByteArray replyData = replyDoc.toJson(QJsonDocument::Compact) + "\n";
-
-                    socket->write(replyData);
-                    socket->flush();  // 刷新到操作系统缓冲区
-
-                    emit messageReceived(QString("[系统提示] [%1]数据解析成功，已存入数据库,姓名:%2").arg(action).arg(stuName));
+                    socket->write(QJsonDocument(reply).toJson(QJsonDocument::Compact) + "\n");
                     emit databaseUpdated();
-                }else{
-                    emit messageReceived("  -> [系统警告] 数据库存储失败！");
+                } else {
+                    emit messageReceived("  -> [警告] 数据库存储失败！");
                 }
-            }else{
-                emit messageReceived("  -> [警告] JSON 格式缺少必需的 CardID 或 Action 字段!");
+            } else if (type == "theory") {
+                QString cardId = jsonObj.value("cardId").toString();
+                int score = jsonObj.value("score").toInt();
+                int total = jsonObj.value("total").toInt();
+                QString deviceId = jsonObj.value("device_id").toString();
+
+                if (cardId.isEmpty()) {
+                    emit messageReceived("[警告] 答题数据异常!");
+                    continue;
+                }
+
+                if (m_db.insertTheoryResult(cardId, score, total, deviceId)) {
+                    emit messageReceived(QString("[系统提示] 成绩入库成功：%1/%2").arg(score).arg(total));
+
+                    QJsonObject replyTheory;
+                    replyTheory["type"] = "ack";
+                    replyTheory["status"] = "theory_ok"; // (theory success)
+                    replyTheory["CardID"] = cardId;
+
+                    QJsonDocument replyDoc(replyTheory);
+                    socket->write(QJsonDocument(replyTheory).toJson(QJsonDocument::Compact) + "\n");
+
+                    emit databaseUpdated();
+                } else {
+                    emit messageReceived("[警告] 理论成绩入库失败");
+                }
+            } else if (type == "heartbeat") {
+                QString devId = jsonObj["device_id"].toString(); // 在线的设备
+                QString cardId = jsonObj["CardID"].toString(); // 设备内的用户
+
+                if(!m_activeSessions.contains(devId)) {
+                    m_activeSessions[devId] = {cardId, QDateTime::currentDateTime(), QDateTime::currentDateTime()};
+                } else {
+                    m_activeSessions[devId].lastSeen = QDateTime::currentDateTime();
+                }
+                qDebug() << "收到一次心跳" << devId << endl;
+                return;
             }
         }else{
             emit messageReceived("  -> [提示] 收到的非 JSON 标准格式数据，仅做展示，不存入数据库。");
         }
-
     }
 }
 
@@ -134,6 +204,21 @@ QVariantList TcpBackend::getHistoryRecords(){
     return m_db.getAllRecords();
 }
 // 新建
-bool TcpBackend::registerNewStudent(const QString &cardId, const QString &name) {
+bool TcpBackend::registerNewStudent(const QString &cardId, const QString &name){
     return m_db.addStudent(cardId, name);
+}
+// 校验
+bool TcpBackend::verifySignature(const QJsonObject &obj) {
+    QString clientSign = obj.value("sign").toString();
+    QString type = obj.value("type").toString();
+    QString timestamp = obj.value("timestamp").toString();
+
+    // 构造签名原文(必须与树莓派端的顺序完全一致)
+    // CardID + type + timestamp + secretKey
+    QString cardId = obj.contains("CardID") ? obj["CardID"].toString() : obj["cardId"].toString();
+    QString dataToSign = cardId + type + timestamp + secretKey;
+
+    QString serverSign = QCryptographicHash::hash(dataToSign.toUtf8(), QCryptographicHash::Md5).toHex();
+    qDebug()<<serverSign;
+    return (serverSign == clientSign);
 }
