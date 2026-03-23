@@ -5,9 +5,6 @@
 #include <QCryptographicHash>
 #include <QDebug>
 
-// salt 盐值
-QString secretKey = "HelloWorldDrivingSchool@2026_Pi4B";
-
 TcpBackend::TcpBackend(QObject *parent) : QObject(parent){
     m_server = new QTcpServer(this);
 
@@ -46,7 +43,6 @@ TcpBackend::TcpBackend(QObject *parent) : QObject(parent){
     });
     m_checkTimer->start(10000); // 每 10 秒扫描一次名册
 }
-
 // 供 QML 调用的启动服务器函数
 void TcpBackend::startServer(int port){
     if (m_server->isListening()) {
@@ -61,7 +57,6 @@ void TcpBackend::startServer(int port){
         emit messageReceived("服务端启动失败！");
     }
 }
-
 // 处理新连接
 void TcpBackend::onNewConnection(){
     // 获取和这个具体客户端通信的套接字
@@ -111,17 +106,24 @@ void TcpBackend::onReadyRead(){
             // 安全校验
             if (!verifySignature(jsonObj)) {
                 emit messageReceived("[安全警告] 收到非法签名数据，已拦截！类型: " + type);
+                socket->disconnectFromHost(); // 强制断开 socket
                 return;
             }
 
             if(type == "card"){
                 QString cardId = jsonObj.value("CardID").toString();
                 QString action = jsonObj.value("Action").toString();
-                int duration = jsonObj.value("Duration").toInt();
+                 int duration = jsonObj.value("Duration").toInt();
                 QString devId = jsonObj.value("device_id").toString();
 
                 // 格式校验
                 if(m_db.insertRecord(cardId, action, duration, devId)){
+                    // Session 的起点
+                    if(action == "上车签到"){
+                        m_activeSessions[devId] = {cardId, QDateTime::currentDateTime(), QDateTime::currentDateTime()};
+                    }else if(action == "下车签退"){
+                        m_activeSessions.remove(devId);
+                    }
                     QSqlQuery queryUsr;
                     queryUsr.prepare("SELECT name FROM students WHERE card_id = :id");
                     queryUsr.bindValue(":id", cardId);
@@ -179,14 +181,13 @@ void TcpBackend::onReadyRead(){
                     m_activeSessions[devId].lastSeen = QDateTime::currentDateTime();
                 }
                 qDebug() << "收到一次心跳" << devId << endl;
-                return;
+                return; // 不回复 节省 TCP 带宽
             }
         }else{
             emit messageReceived("  -> [提示] 收到的非 JSON 标准格式数据，仅做展示，不存入数据库。");
         }
     }
 }
-
 // 处理断开连接的逻辑
 void TcpBackend::onDisconnected(){
     QTcpSocket *socket = qobject_cast<QTcpSocket*>(sender());
@@ -198,14 +199,15 @@ void TcpBackend::onDisconnected(){
     // 释放资源，防止内存泄漏
     socket->deleteLater();
 }
-
 // 获取数据
 QVariantList TcpBackend::getHistoryRecords(){
     return m_db.getAllRecords();
 }
-// 新建
+// 注册学员信息
 bool TcpBackend::registerNewStudent(const QString &cardId, const QString &name){
-    return m_db.addStudent(cardId, name);
+    bool ok = m_db.addStudent(cardId, name);
+    if (ok) emit studentsUpdated(); // 注册成功发射信号
+    return ok;
 }
 // 校验
 bool TcpBackend::verifySignature(const QJsonObject &obj) {
@@ -215,10 +217,52 @@ bool TcpBackend::verifySignature(const QJsonObject &obj) {
 
     // 构造签名原文(必须与树莓派端的顺序完全一致)
     // CardID + type + timestamp + secretKey
+    // TODO 将设备端发送 JSON 的逻辑统一键
     QString cardId = obj.contains("CardID") ? obj["CardID"].toString() : obj["cardId"].toString();
     QString dataToSign = cardId + type + timestamp + secretKey;
 
     QString serverSign = QCryptographicHash::hash(dataToSign.toUtf8(), QCryptographicHash::Md5).toHex();
     qDebug()<<serverSign;
     return (serverSign == clientSign);
+}
+// 搜寻学员
+QVariantList TcpBackend::getStudents() {
+    QVariantList list;
+    QSqlQuery query("SELECT card_id, name FROM students ORDER BY id DESC");
+    while(query.next()){
+        QVariantMap map;
+        map["card_id"] = query.value(0).toString();
+        map["name"] = query.value(1).toString();
+        list.append(map);
+    }
+    return list;
+}
+// 删除学员
+bool TcpBackend::deleteStudent(const QString cardId) {
+    QSqlQuery query;
+    query.prepare("DELETE FROM students WHERE card_id = ?");
+    query.addBindValue(cardId);
+    if(query.exec()) {
+        emit studentsUpdated();
+        emit databaseUpdated();
+        return true;
+    }
+    return false;
+}
+
+QVariantList TcpBackend::getActiveSessions() {
+    QVariantList list;
+    QMapIterator<QString, SessionInfo> i(m_activeSessions);
+    while (i.hasNext()) {
+        i.next();
+        QVariantMap map;
+        map["device_id"] = i.key();
+        map["card_id"] = i.value().cardId;
+        map["start_time"] = i.value().startTime.toString("hh:mm:ss");
+        // 计算已练时长
+        int mins = i.value().startTime.secsTo(QDateTime::currentDateTime()) / 60;
+        map["duration_mins"] = mins;
+        list.append(map);
+    }
+    return list;
 }

@@ -13,6 +13,7 @@ function refreshTable(model, backend) {
 
 // 刷新图表：传入 QML 的 barSeries、xAxis、yAxis
 function refreshChart(barSeries, xAxis, yAxis, backend) {
+    if (!barSeries) return;
     var data = backend.getLeaderboard()
 
     // 清空已有柱子集合
@@ -42,5 +43,14 @@ function refreshChart(barSeries, xAxis, yAxis, backend) {
         yAxis.max = maxVal > 0 ? maxVal * 1.2 : 100
     } else {
         xAxis.categories = ["暂无打卡数据"]
+    }
+}
+
+// 刷新理论成绩表格
+function refreshTheoryTable(model, backend) {
+    model.clear()
+    var data = backend.getTheoryScores()
+    for (var i = 0; i < data.length; i++) {
+        model.append(data[i])
     }
 }

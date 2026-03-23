@@ -101,7 +101,7 @@ bool DbManager::insertRecord(const QString &cardId, const QString &action, int d
         return false;
     }
     // 2 如果是签退(第二次刷卡)
-    if(action == "下车签退" && duration > 0){
+    if((action == "下车签退" || action == "系统异常签退") && duration > 0){
         QSqlQuery updateQuery;
         updateQuery.prepare("UPDATE students SET total_seconds = total_seconds + :duration WHERE card_id = :card_id");
         updateQuery.bindValue(":duration", duration);
@@ -117,7 +117,7 @@ bool DbManager::insertRecord(const QString &cardId, const QString &action, int d
     return true;
 }
 // 写数据 刷卡后的练习
-bool DbManager::insertTheoryResult(QString cardId, int score, int total, const QString deviceId){
+bool DbManager::insertTheoryResult(const QString cardId, int score, int total, const QString deviceId){
     if (!main_db.isOpen()) return false;
     main_db.transaction();
 
@@ -182,7 +182,7 @@ QVariantList DbManager::getLeaderboard(){
 
 QVariantList DbManager::getTheoryScores(){
     QVariantList list;
-    // 使用 LEFT JOIN 关联学生姓名
+    // LEFT JOIN 关联学生姓名
     QString sql = R"(
         SELECT s.name, t.score, t.total, t.timestamp
         FROM theory_results t

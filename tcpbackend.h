@@ -25,6 +25,12 @@ public:
     Q_INVOKABLE bool registerNewStudent(const QString &cardId, const QString &name);
     // 获取排行榜数据
     Q_INVOKABLE QVariantList getLeaderboard(){ return m_db.getLeaderboard(); }
+    // 获取理论成绩
+    Q_INVOKABLE QVariantList getTheoryScores() { return m_db.getTheoryScores(); }
+    // 查询/删除学员
+    Q_INVOKABLE QVariantList getStudents();
+    Q_INVOKABLE bool deleteStudent(const QString cardId);
+    Q_INVOKABLE QVariantList getActiveSessions();
 
     struct SessionInfo {
       QString cardId;
@@ -39,6 +45,7 @@ signals:
     void messageReceived(QString msg);
     // 当数据库有新数据存入时 发射信号给 QML
     void databaseUpdated();
+    void studentsUpdated();
 
 private slots:
     // C++ 内部处理新连接的槽
@@ -53,6 +60,8 @@ private:
     DbManager m_db; // TCP 后端的数据库管理器
     QHash<QTcpSocket*, QByteArray> m_buffers; // 接收缓冲区(防止粘包)
     bool verifySignature(const QJsonObject &obj); //安全校验
+    // salt 盐值
+    QString secretKey = "HelloWorldDrivingSchool@2026_Pi4B";
 };
 
 #endif // TCPBACKEND_H
