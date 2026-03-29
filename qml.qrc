@@ -2,8 +2,30 @@
     <qresource prefix="/">
         <file>main.qml</file>
         <file>qml_helpers.js</file>
+        <file>pages/DashboardPage.qml</file>
+        <file>pages/RecordsPage.qml</file>
+        <file>pages/LogPage.qml</file>
+        <file>pages/ScorePage.qml</file>
+        <file>pages/StatisticsPage.qml</file>
+        <file>pages/StudentPage.qml</file>
+        <file>components/SideBar.qml</file>
+        <file>components/TopHeader.qml</file>
+        <file>pages/MonitorPage.qml</file>
+        <file>pages/CardIssuePage.qml</file>
+        <file>pages/SettingPage.qml</file>
+        <file>dialogs/LoginOverlay.qml</file>
+        <file>components/NavButton.qml</file>
     </qresource>
     <qresource prefix="/res">
         <file>ico/icon.ico</file>
+        <file>ico/usr.ico</file>
+        <file>ico/statistics.ico</file>
+        <file>ico/student.ico</file>
+        <file>ico/records.ico</file>
+        <file>ico/home.ico</file>
+        <file>ico/eye.ico</file>
+        <file>ico/log.ico</file>
+        <file>ico/score.ico</file>
+        <file>ico/card.ico</file>
     </qresource>
 </RCC>

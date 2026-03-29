@@ -11,9 +11,9 @@ function refreshTable(model, backend) {
     }
 }
 
-// 刷新图表：传入 QML 的 barSeries、xAxis、yAxis
+// 刷新柱状图 传入 QML 的 barSeries、xAxis、yAxis
 function refreshChart(barSeries, xAxis, yAxis, backend) {
-    if (!barSeries) return;
+    if (!barSeries) return
     var data = backend.getLeaderboard()
 
     // 清空已有柱子集合
@@ -32,17 +32,19 @@ function refreshChart(barSeries, xAxis, yAxis, backend) {
 
     for (var i = 0; i < data.length; i++) {
         categories.push(data[i].name)
-        var val = data[i].total_seconds
-        if (val > maxVal) maxVal = val
-        barSet.append(val)
+
+        var valInMinutes = data[i].total_seconds / 60.0
+        if (valInMinutes > maxVal) maxVal = valInMinutes
+        barSet.append(valInMinutes)
     }
 
     // 渲染 X 轴名字和动态调整 Y 轴最高点
     if (categories.length > 0) {
         xAxis.categories = categories
-        yAxis.max = maxVal > 0 ? maxVal * 1.2 : 100
+        yAxis.max = maxVal > 0 ? maxVal * 1.2 : 5
     } else {
         xAxis.categories = ["暂无打卡数据"]
+        yAxis.max = 5
     }
 }
 
@@ -53,4 +55,20 @@ function refreshTheoryTable(model, backend) {
     for (var i = 0; i < data.length; i++) {
         model.append(data[i])
     }
+}
+
+// 刷新学员表
+function refreshStudentsList() {
+    studentsModel.clear();
+    var arr = backend.getStudents();
+    for (var i=0; i<arr.length; i++) studentsModel.append(arr[i]);
+}
+
+// 秒转分
+function formatDuration(totalSeconds) {
+    if (totalSeconds <= 0) return "--";
+    var mins = Math.floor(totalSeconds / 60);
+    var secs = totalSeconds % 60;
+    if (mins === 0) return secs + " 秒";
+    return mins + " 分 " + secs + " 秒";
 }

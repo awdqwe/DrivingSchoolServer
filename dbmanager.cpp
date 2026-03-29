@@ -60,7 +60,17 @@ bool DbManager::initDb(){
         )
     )";
 
-    if(!query.exec(createRecordsSql) || !query.exec(createTableSql) || !query.exec(createTheorySql)){
+    // 创建表： usr
+    QString createUsersSql = R"(
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    )";
+
+    if(!query.exec(createRecordsSql) || !query.exec(createTableSql) || !query.exec(createTheorySql) || !query.exec(createUsersSql)){
         qDebug() << "[错误]创建数据表失败:" << query.lastError().text();
         return false;
     }

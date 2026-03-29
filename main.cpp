@@ -16,15 +16,13 @@ int main(int argc, char *argv[])
 
     app.setWindowIcon(QIcon(":/res/ico/icon.ico"));
 
-    // 启动并测试数据库（debug）
-//    DbManager ndb;
-//    if(ndb.initDb()){
-//        // 插入数据
-//        ndb.insertRecord("SYS_001","系统已启动");
-//    }
-
     // 将 C++ 类注册到 QML 系统中
-    // 参数含义：模块名(Backend)、主版本号(1)、次版本号(0)、QML中的组件名(TcpBackend)
+    /* 
+     *模块名(Backend)
+     *主版本号(1)
+     *次版本号(0)
+     *QML中的组件名(TcpBackend)
+    */    
     // 预计论文中写：“本系统通过 qmlRegisterType 实现了底层 C++ 业务逻辑向 QML 前端安全暴露...”
     qmlRegisterType<TcpBackend>("Backend", 1, 0, "TcpBackend");
 

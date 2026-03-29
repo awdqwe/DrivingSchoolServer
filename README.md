@@ -81,3 +81,44 @@
     步骤3，PC端接收心跳，收到即回复（或者可以不回复），一段时间内没收到就认为设备关闭，将自己生成一条下车签退的数据写进数据库。
     步骤4，如果要让步骤3能正常进行，需要给PC端也写一个计时器。
         检测心跳超时
+
+
+
+
+
+
+
+## 回应消息详情
+# 刷卡签到 
+    触发条件: 数据库插入成功时返回
+    {
+        "type": "ack",
+        "status": "success",
+        "CardID": "卡片ID",
+        "name": "学员姓名",
+        "action": "上车签到/下车签退",
+        "duration": 时长数值
+    }
+
+# 理论成绩
+    触发条件: 理论成绩入库成功时返回
+    {
+        "type": "ack",
+        "status": "theory_ok",
+        "CardID": "卡片ID"
+    }
+    
+# 发卡消息
+    已注册卡片
+    {
+        "type": "issue_reply",
+        "status": "exists",
+        "CardID": "卡片ID",
+        "name": "学员姓名"
+    }
+    新卡
+    {
+        "type": "issue_reply",
+        "status": "new",
+        "CardID": "卡片ID"
+    }

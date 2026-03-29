@@ -31,6 +31,12 @@ public:
     Q_INVOKABLE QVariantList getStudents();
     Q_INVOKABLE bool deleteStudent(const QString cardId);
     Q_INVOKABLE QVariantList getActiveSessions();
+    // 登录
+    Q_INVOKABLE bool login(QString username, QString password);
+    Q_INVOKABLE bool registerAdmin(QString username, QString password);
+
+    Q_INVOKABLE void exportToCSV();
+    Q_INVOKABLE void sendControlCommand(QString cmd);
 
     struct SessionInfo {
       QString cardId;
@@ -46,6 +52,8 @@ signals:
     // 当数据库有新数据存入时 发射信号给 QML
     void databaseUpdated();
     void studentsUpdated();
+    // 新卡
+    void newCardDetected(QString cardId);
 
 private slots:
     // C++ 内部处理新连接的槽
