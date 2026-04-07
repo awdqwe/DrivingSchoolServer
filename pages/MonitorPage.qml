@@ -78,13 +78,13 @@ Item {
                         Label { text: model.duration_mins + " 分钟"; color: "#e67e22"; font.bold: true }
                     }
 
-                    Button {
-                        text: "远程断开"
-                        Layout.fillWidth: true
-                        flat: true
-                        contentItem: Text { text: parent.text; color: "#e74c3c"; horizontalAlignment: Text.AlignHCenter }
-                        onClicked: console.log("发送断开指令至: " + model.device_id)
-                    }
+                    // Button {
+                    //     text: "远程断开"
+                    //     Layout.fillWidth: true
+                    //     flat: true
+                    //     contentItem: Text { text: parent.text; color: "#e74c3c"; horizontalAlignment: Text.AlignHCenter }
+                    //     onClicked: console.log("发送断开指令至: " + model.device_id)
+                    // }
                 }
             }
         }

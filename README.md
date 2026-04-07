@@ -1,13 +1,10 @@
 # 一、硬件方案
-树莓派 + RC522 RFID 模块（刷卡模块）
+树莓派(4代B型 4G ram) + RC522 RFID 模块（刷卡模块）
 在真实的驾校系统中，“学员上车刷卡签到，下车刷卡签退”是最核心的物联网动作。这个硬件能提供实物交互演示
 # 二、软件方案
 1. 树莓派端软件设计 (C/C++ Linux)
     多线程并发 (std::thread)：
-    线程 A（硬件交互）：循环读取 RFID 模块，检测是否有学员刷卡。
-    线程 B（数据模拟与生成）：当学员刷卡上车后，启动该线程，每隔 1 秒生成一组车辆状态数据（如：当前车速、虚拟坐标、学习时长）。
-    线程 C（网络通信）：负责与 PC 端保持 TCP 长连接，并发送心跳包（Heartbeat）和业务数据。
-    离线缓存机制（重点）：如果在练车过程中网络断开了（WiFi信号不好），C++ 程序能将数据暂存在树莓派的本地（写进文件里），等网络恢复后，再把“断网期间的学时数据”补传给 PC。
+    离线缓存机制：如果在练车过程中网络断开，C++ 程序能将数据暂存在树莓派的本地（写进文件里），等网络恢复后，再把“断网期间的学时数据”补传给 PC。
     JSON 数据格式：树莓派和 PC 通信采用跨平台的 JSON 格式（可以使用轻量级的开源库如 nlohmann/json ）。
 2. PC端软件设计 (C++ & Qt)
     TCP 并发服务器：使用 Qt 的 QTcpServer，能够同时接入多个“树莓派车辆”（程序架构上支持多车同时练车，体现扩展性）。
@@ -122,3 +119,54 @@
         "status": "new",
         "CardID": "卡片ID"
     }
+
+## 基本结构
+C:.
+│  dbmanager.cpp
+│  dbmanager.h
+│  DrivingSchoolServer.pro
+│  DrivingSchoolServer.pro.user
+│  main.cpp
+│  main.qml
+│  qml.qrc
+│  qml_helpers.js
+│  README.md
+│  res.qrc
+│  tcpbackend.cpp
+│  tcpbackend.h
+│
+├─.vscode
+│  settings.json
+│
+├─components
+│  NavButton.qml
+│  sidebar.qml
+│  TopHeader.qml
+│
+├─dialogs
+│  LoginOverlay.qml
+│
+├─ico
+│  add.ico
+│  card.ico
+│  eye.ico
+│  home.ico
+│  icon.ico
+│  log.ico
+│  records.ico
+│  score.ico
+│  statistics.ico
+│  student.ico
+│  usr.ico
+│
+└─pages
+    AppointmentPage.qml
+    CardIssuePage.qml
+    DashboardPage.qml
+    LogPage.qml
+    MonitorPage.qml
+    RecordsPage.qml
+    ScorePage.qml
+    SettingPage.qml
+    StatisticsPage.qml
+    StudentPage.qml

@@ -1,15 +1,12 @@
-// #include <QGuiApplication>
 #include <QApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QIcon>
-#include "tcpbackend.h" // TCP服务
-#include "dbmanager.h"  // DB服务
+#include "tcpbackend.h"
+//#include "dbmanager.h"  // DB服务
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]){
     qputenv("QT_IM_MODULE", QByteArray("qtvirtualkeyboard"));
-
     QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 
     QApplication app(argc, argv);
@@ -27,6 +24,7 @@ int main(int argc, char *argv[])
     qmlRegisterType<TcpBackend>("Backend", 1, 0, "TcpBackend");
 
     QQmlApplicationEngine engine;
+    
     const QUrl url(QStringLiteral("qrc:/main.qml"));
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
                      &app, [url](QObject *obj, const QUrl &objUrl) {

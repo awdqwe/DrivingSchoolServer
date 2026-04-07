@@ -1,41 +1,123 @@
 // 数据统计
 import QtQuick 2.14
-import QtQuick.Layouts 1.14
 import QtQuick.Controls 2.14
+import QtQuick.Layouts 1.14
 import QtCharts 2.14
-
+import "../qml_helpers.js" as Helpers
 Item {
     id: statsPage
-    signal refreshRequested()
 
-    // 暴露图表组件给 main.qml 里的 Helpers 使用
-    property alias chartSeries: barSeries
-    property alias axisX: xAxis
-    property alias axisY: yAxis
+    // 与学员管理共用 ListModel；勿用 backend.getStudents() 直接作 model（绑定不会随库更新而重算）
+    property var studentListModel: null
+
+    property string selectedStudentId: ""
+    function safeProgressForSubject(subjectName) {
+        if (selectedStudentId === "")
+            return 0
+
+        var rawValue = backend.getStudentProgress(selectedStudentId, subjectName)
+        var numericValue = Number(rawValue)
+        if (!isFinite(numericValue))
+            return 0
+
+        return Math.max(0, Math.min(1, numericValue))
+    }
+
+    function validateStudentSelection() {
+        if (!studentListModel || selectedStudentId === "")
+            return
+        var found = false
+        for (var i = 0; i < studentListModel.count; i++) {
+            if (studentListModel.get(i).card_id === selectedStudentId) {
+                found = true
+                break
+            }
+        }
+        if (!found) {
+            selectedStudentId = ""
+            studentSelector.currentIndex = -1
+        }
+    }
 
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 30
-        spacing: 20
+        spacing: 25
 
+        // 1. 顶部选择栏
         RowLayout {
-            Layout.fillWidth: true
-            Label { text: "训练大数据统计"; font.pixelSize: 22; font.bold: true }
-            Item { Layout.fillWidth: true }
+            spacing: 15
+            Label { text: "请选择学员查询进度:"; font.pixelSize: 18 }
+            
+            ComboBox {
+                id: studentSelector
+                Layout.preferredWidth: 250
+                model: statsPage.studentListModel
+                textRole: "name"
+                onActivated: {
+                    if (index < 0 || !statsPage.studentListModel)
+                        return
+                    selectedStudentId = statsPage.studentListModel.get(index).card_id
+                    refreshProgress()
+                }
+            }
+            
             Button {
-                text: "刷新排行"
-                onClicked: refreshRequested()
+                text: "刷新数据"
+                onClicked: refreshProgress()
             }
         }
 
-        // 图表容器
-        Rectangle {
+        // 2. 进度条展示区
+        GridLayout {
+            columns: 2
             Layout.fillWidth: true
-            Layout.fillHeight: true
-            color: "white"
-            radius: 12
-            clip: true
+            rowSpacing: 20; columnSpacing: 40
+            visible: selectedStudentId !== ""
 
+            // 定义重复项组件
+            Repeater {
+                model: ["科目一", "科目二", "科目三", "科目四"]
+                
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    RowLayout {
+                        Label { text: modelData; font.bold: true; font.pixelSize: 16 }
+                        Item { Layout.fillWidth: true }
+                        Label { 
+                            text: Math.round(statsPage.safeProgressForSubject(modelData) * 100) + "%"
+                        }
+                    }
+
+                    ProgressBar {
+                        id: progBar
+                        Layout.fillWidth: true
+                        height: 15
+                        value: statsPage.safeProgressForSubject(modelData) // 绑定后端进度（带类型兜底）
+                        
+                        background: Rectangle {
+                            implicitHeight: 15
+                            color: "#E0E0E0"
+                            radius: 7
+                        }
+                        contentItem: Item {
+                            Rectangle {
+                                width: progBar.visualPosition * parent.width
+                                height: parent.height
+                                radius: 7
+                                color: (modelData.indexOf("一") !== -1 || modelData.indexOf("四") !== -1) ? "#4CAF50" : "#2196F3"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. 排行榜图表
+        Label { text: "全校学时排行 (Top 5)"; font.bold: true; padding: 10 }
+        Rectangle {
+            Layout.fillWidth: true; Layout.fillHeight: true
+            color: "#F9F9F9"; radius: 10; border.color: "#EEE"
             ChartView {
                 id: chartView
                 anchors.fill: parent
@@ -51,18 +133,28 @@ Item {
                 }
             }
         }
+    }
 
-        // 底部统计说明
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 20
-            Rectangle {
-                Layout.fillWidth: true; height: 80; color: "#fdf2e9"; radius: 8
-                Label { anchors.centerIn: parent; text: "💡 统计逻辑：基于所有历史打卡记录的签到/签退差值计算"; color: "#e67e22" }
-            }
+    Component.onCompleted: {
+        Helpers.refreshChart(barSeries, xAxis, yAxis, backend)
+    }
+
+    Connections {
+        target: backend
+        function onStudentsUpdated() {
+            validateStudentSelection()
+            Helpers.refreshChart(barSeries, xAxis, yAxis, backend)
+        }
+        function onDatabaseUpdated() {
+            Helpers.refreshChart(barSeries, xAxis, yAxis, backend)
         }
     }
 
-    // 页面显示时自动刷新一次
-    Component.onCompleted: refreshRequested()
+    function refreshProgress() {
+        // 仅触发重新绑定：强制刷新 selectedStudentId 的值即可
+        if (selectedStudentId === "") return
+            var temp = selectedStudentId
+            selectedStudentId = ""
+            selectedStudentId = temp
+    }
 }

@@ -36,31 +36,33 @@ bool DbManager::initDb(){
             )
     )";
 
-    // 创建表: records
+    // 创建表: records (记录)
     QString createRecordsSql = R"(
             CREATE TABLE IF NOT EXISTS records(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 card_id TEXT NOT NULL,
                 action TEXT NOT NULL,
+                subject TEXT NOT NULL,
                 duration INTEGER DEFAULT 0,
                 device_id TEXT NOT NULL,
                 timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
             )
     )";
 
-    // 创建表：theory_results
+    // 创建表：theory_results (理论结果)
     QString createTheorySql = R"(
         CREATE TABLE IF NOT EXISTS theory_results(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             card_id TEXT NOT NULL,
             score INTEGER,
             total INTEGER,
+            subject TEXT,
             device_id TEXT NOT NULL,
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     )";
 
-    // 创建表： usr
+    // 创建表： usr (用户)
     QString createUsersSql = R"(
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -70,16 +72,33 @@ bool DbManager::initDb(){
         )
     )";
 
-    if(!query.exec(createRecordsSql) || !query.exec(createTableSql) || !query.exec(createTheorySql) || !query.exec(createUsersSql)){
+    // 创建表 appointments (预约)
+    QString createAppointmentsSql = R"(
+        CREATE TABLE IF NOT EXISTS appointments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            card_id TEXT,
+            subject TEXT,
+            appointment_date TEXT,
+            device_id TEXT,
+            status INTEGER DEFAULT 0, -- 0:未读, 1:已读
+            create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    )";
+
+    if(!query.exec(createRecordsSql) ||
+            !query.exec(createTableSql) ||
+            !query.exec(createTheorySql) ||
+            !query.exec(createUsersSql) ||
+            !query.exec(createAppointmentsSql)){
         qDebug() << "[错误]创建数据表失败:" << query.lastError().text();
         return false;
     }
-
     qDebug() << "[成功]数据表初始化完成.";
     return true;
 
 }
 
+// 查学时进度
 bool DbManager::addStudent(const QString &cardId, const QString &name){
     QSqlQuery query;
     query.prepare("INSERT OR IGNORE INTO students (card_id, name) VALUES (:card_id, :name)");
@@ -88,8 +107,8 @@ bool DbManager::addStudent(const QString &cardId, const QString &name){
     return query.exec();
 }
 
-// 写数据 刷卡
-bool DbManager::insertRecord(const QString &cardId, const QString &action, int duration, const QString &deviceId){
+// 写数据 刷卡后的记录
+bool DbManager::insertRecord(const QString &cardId, const QString &action, int duration, const QString &deviceId, const QString &subject){
     if (!main_db.isOpen()) return false;
 
     // 事务(Transaction) 保证“插入记录”和“累加学时” 同时成功/同时失败
@@ -99,12 +118,13 @@ bool DbManager::insertRecord(const QString &cardId, const QString &action, int d
     // 1 插入打卡记录(是第一次刷卡)
 
     // [防注入]使用 prepare 预处理语句，而不是直接拼接字符串
-    query.prepare("INSERT INTO records (card_id, action, duration, device_id) VALUES (:card_id, :action, :duration, :device_id)");
+    query.prepare("INSERT INTO records (card_id, action, duration, device_id, subject) VALUES (:card_id, :action, :duration, :device_id, :subject)");
     query.bindValue(":card_id", cardId);
     query.bindValue(":action", action);
     query.bindValue(":duration", duration);
     query.bindValue(":device_id", deviceId);
-
+    query.bindValue(":subject", subject);
+    
     if(!query.exec()) {
         qDebug() << "[错误]插入数据失败:" << query.lastError().text();
         main_db.rollback(); // 失败则回滚
@@ -126,16 +146,18 @@ bool DbManager::insertRecord(const QString &cardId, const QString &action, int d
     main_db.commit(); // 提交事务
     return true;
 }
+
 // 写数据 刷卡后的练习
-bool DbManager::insertTheoryResult(const QString cardId, int score, int total, const QString deviceId){
+bool DbManager::insertTheoryResult(const QString cardId, int score, int total, const QString deviceId, const QString &subject){
     if (!main_db.isOpen()) return false;
     main_db.transaction();
 
     QSqlQuery query;
-    query.prepare("INSERT INTO theory_results (card_id, score, total, device_id) VALUES (?, ?, ?, ?)");
+    query.prepare("INSERT INTO theory_results (card_id, score, total, subject, device_id) VALUES (?, ?, ?, ?, ?)");
     query.addBindValue(cardId);
     query.addBindValue(score);
     query.addBindValue(total);
+    query.addBindValue(subject);
     query.addBindValue(deviceId);
     if(!query.exec()) {
         qDebug() << "[错误]插入数据失败:" << query.lastError().text();
@@ -146,6 +168,7 @@ bool DbManager::insertTheoryResult(const QString cardId, int score, int total, c
     main_db.commit();
     return true;
 }
+
 QVariantList DbManager::getAllRecords(){
     QVariantList list;
     if (!main_db.isOpen()) return list;
@@ -190,11 +213,64 @@ QVariantList DbManager::getLeaderboard(){
     return list;
 }
 
+bool DbManager::insertAppointment(const QString &cardId, const QString &subject, const QString &date, const QString &deviceId){
+    QSqlQuery query;
+    query.prepare("INSERT INTO appointments (card_id, subject, appointment_date, device_id) VALUES (?, ?, ?, ?)");
+    query.addBindValue(cardId);
+    query.addBindValue(subject);
+    query.addBindValue(date);
+    query.addBindValue(deviceId);
+    return query.exec();
+}
+
+// 获取预约列表
+QVariantList DbManager::getAppointments(){
+    QVariantList list;
+    QString sql = "SELECT a.id, COALESCE(s.name, '未知学员'), a.card_id, a.subject, "
+                  "a.appointment_date, a.status, a.create_time "
+                  "FROM appointments a LEFT JOIN students s ON a.card_id = s.card_id "
+                  "ORDER BY a.create_time DESC";
+    QSqlQuery query(sql);
+    while(query.next()){
+        QVariantMap map;
+        map["id"] = query.value(0).toInt();
+        map["name"] = query.value(1).toString();
+        map["card_id"] = query.value(2).toString();
+        map["subject"] = query.value(3).toString();
+        map["date"] = query.value(4).toString();
+        map["status"] = query.value(5).toInt();
+        map["received_time"] = query.value(6).toString();
+        list.append(map);
+    }
+    return list;
+}
+
+// 修改预约状态
+bool DbManager::updateAppointmentStatus(int appointmentId, int newStatus) {
+    if (!main_db.isOpen()) return false;
+
+    QSqlQuery query;
+    query.prepare("UPDATE appointments SET status = :status WHERE id = :id");
+    query.bindValue(":status", newStatus);
+    query.bindValue(":id", appointmentId);
+    return query.exec();
+}
+
+// 删除预约记录
+bool DbManager::deleteAppointment(int appointmentId) {
+    if (!main_db.isOpen()) return false;
+
+    QSqlQuery query;
+    query.prepare("DELETE FROM appointments WHERE id = :id");
+    query.bindValue(":id", appointmentId);
+    return query.exec();
+}
+
 QVariantList DbManager::getTheoryScores(){
     QVariantList list;
     // LEFT JOIN 关联学生姓名
     QString sql = R"(
-        SELECT s.name, t.score, t.total, t.timestamp
+        SELECT s.name, t.score, t.total, t.subject, t.timestamp
         FROM theory_results t
         LEFT JOIN students s ON t.card_id = s.card_id
         ORDER BY t.timestamp DESC
@@ -205,8 +281,20 @@ QVariantList DbManager::getTheoryScores(){
         map["name"] = query.value(0).toString();
         map["score"] = query.value(1).toInt();
         map["total"] = query.value(2).toInt();
-        map["time"] = query.value(3).toString();
+        map["subject"] = query.value(3).toString();
+        map["time"] = query.value(4).toString();
         list.append(map);
     }
     return list;
+}
+
+int DbManager::getStudentProgress(const QString &cardId, const QString &subject){
+    QSqlQuery query;
+    query.prepare("SELECT SUM(duration) FROM records WHERE card_id = ? AND subject = ? AND action LIKE '%签退%'");
+    query.addBindValue(cardId);
+    query.addBindValue(subject);
+    if(query.exec() && query.next()) {
+        return query.value(0).toInt();
+    }
+    return 0;
 }

@@ -39,9 +39,10 @@ TcpBackend::TcpBackend(QObject *parent) : QObject(parent){
                 QString devId = i.key();
                 QString cardId = i.value().cardId;
                 int duration = i.value().startTime.secsTo(i.value().lastSeen);
+                QString subject = i.value().subject;
 
                 // 自动生成一条“下车签退”记录
-                m_db.insertRecord(cardId, "系统异常签退", duration, devId);
+                m_db.insertRecord(cardId, "系统异常签退", duration, devId, subject);
 
                 emit messageReceived(QString("[超时处理] 设备 %1 失去连接，已自动结算学员 %2 的学时").arg(devId).arg(cardId));
 
@@ -70,6 +71,15 @@ void TcpBackend::startServer(int port){
 void TcpBackend::onNewConnection(){
     // 获取和这个具体客户端通信的套接字
     QTcpSocket *socket = m_server->nextPendingConnection();
+    // 为这个套接字创建一个缓冲区，用于存储未处理的消息
+    m_buffers[socket] = QByteArray();
+
+    QString deviceKey = QString("%1:%2")
+            .arg(socket->peerAddress().toString())
+            .arg(socket->peerPort()); // 以 IP:Port 作为设备唯一标识
+    m_deviceMap[deviceKey] = socket;
+    m_socketDeviceKey[socket] = deviceKey;
+    emit devicesUpdated();
 
     // 1. 当套接字有数据发来时，触发 onReadyRead
     connect(socket, &QTcpSocket::readyRead, this, &TcpBackend::onReadyRead);
@@ -111,6 +121,17 @@ void TcpBackend::onReadyRead(){
         if(jsonError.error == QJsonParseError::NoError && doc.isObject()){
             QJsonObject jsonObj = doc.object();
             QString type = jsonObj.value("type").toString();
+            QString devId = jsonObj.value("device_id").toString();
+
+            if (!devId.isEmpty()) {
+                QString oldKey = m_socketDeviceKey.value(socket);
+                if (!oldKey.isEmpty() && oldKey != devId && m_deviceMap.value(oldKey) == socket) {
+                    m_deviceMap.remove(oldKey);
+                }
+                m_deviceMap[devId] = socket;
+                m_socketDeviceKey[socket] = devId;
+                emit devicesUpdated();
+            }
 
             // 安全校验
             if (!verifySignature(jsonObj) && type != "issue_card"  ) {
@@ -122,8 +143,8 @@ void TcpBackend::onReadyRead(){
             if(type == "card"){
                 QString cardId = jsonObj.value("CardID").toString();
                 QString action = jsonObj.value("Action").toString();
-                 int duration = jsonObj.value("Duration").toInt();
-                QString devId = jsonObj.value("device_id").toString();
+                int duration = jsonObj.value("Duration").toInt();
+                QString subject = jsonObj.value("Subject").toString();
 
                 // 身份校验
                 QSqlQuery queryCheck;
@@ -144,10 +165,10 @@ void TcpBackend::onReadyRead(){
                 QString stuName = queryCheck.value(0).toString();
 
                 // 格式校验
-                if(m_db.insertRecord(cardId, action, duration, devId)){
+                if(m_db.insertRecord(cardId, action, duration, devId, subject)){
                     // Session 的起点
                     if(action == "上车签到"){
-                        m_activeSessions[devId] = {cardId, QDateTime::currentDateTime(), QDateTime::currentDateTime()};
+                        m_activeSessions[devId] = {cardId, QDateTime::currentDateTime(), QDateTime::currentDateTime(), subject};
                     }else if(action == "下车签退"){
                         m_activeSessions.remove(devId);
                     }
@@ -171,13 +192,14 @@ void TcpBackend::onReadyRead(){
                 int score = jsonObj.value("score").toInt();
                 int total = jsonObj.value("total").toInt();
                 QString deviceId = jsonObj.value("device_id").toString();
+                QString subject = jsonObj.value("subject").toString();
 
                 if (cardId.isEmpty()) {
                     emit messageReceived("[警告] 答题数据异常!");
                     continue;
                 }
 
-                if (m_db.insertTheoryResult(cardId, score, total, deviceId)) {
+                if (m_db.insertTheoryResult(cardId, score, total, deviceId, subject)) {
                     emit messageReceived(QString("[系统提示] 成绩入库成功：%1/%2").arg(score).arg(total));
 
                     QJsonObject replyTheory;
@@ -246,6 +268,21 @@ void TcpBackend::onDisconnected(){
     QTcpSocket *socket = qobject_cast<QTcpSocket*>(sender());
     if(!socket) return;
 
+    QStringList staleKeys;
+    QMapIterator<QString, QTcpSocket*> it(m_deviceMap);
+    while (it.hasNext()) {
+        it.next();
+        if (it.value() == socket) {
+            staleKeys.append(it.key());
+        }
+    }
+    for (const QString &key : staleKeys) {
+        m_deviceMap.remove(key);
+    }
+    m_socketDeviceKey.remove(socket);
+    m_buffers.remove(socket);
+    emit devicesUpdated();
+
     QString clientIP = socket->peerAddress().toString();
     emit messageReceived("[下线通知]车辆终端已断开,IP: " + clientIP);
 
@@ -268,14 +305,16 @@ bool TcpBackend::verifySignature(const QJsonObject &obj) {
     QString type = obj.value("type").toString();
     QString timestamp = obj.value("timestamp").toString();
 
-    // 构造签名原文(必须与树莓派端的顺序完全一致)
-    // CardID + type + timestamp + secretKey
-    // TODO 将设备端发送 JSON 的逻辑统一键
-    QString cardId = obj.contains("CardID") ? obj["CardID"].toString() : obj["cardId"].toString();
-    QString dataToSign = cardId + type + timestamp + secretKey;
+    // 构造签名原文(构造方法必须与树莓派端一致)
+    // CardID + type + timestamp + subject + secretKey
+    QString cardId = obj.value("CardID").toString();
+    QString subject = obj.value("Subject").toString();
 
-    QString serverSign = QCryptographicHash::hash(dataToSign.toUtf8(), QCryptographicHash::Md5).toHex();
-    qDebug()<<serverSign;
+    QString origin = cardId + type + timestamp + subject + secretKey;
+
+    QString serverSign = QCryptographicHash::hash(origin.toUtf8(), QCryptographicHash::Md5).toHex();
+    qDebug() << "[签名校验] serverSign:" << serverSign << " clientSign:" << clientSign;
+
     return (serverSign == clientSign);
 }
 // 搜寻学员
@@ -318,6 +357,59 @@ QVariantList TcpBackend::getActiveSessions() {
         list.append(map);
     }
     return list;
+}
+
+// 获取在线设备列表
+QVariantList TcpBackend::getConnectedDevices() {
+    QVariantList list;
+    QMapIterator<QString, QTcpSocket*> i(m_deviceMap);
+    while (i.hasNext()) {
+        i.next();
+        QTcpSocket *sock = i.value();
+        if (!sock || sock->state() != QAbstractSocket::ConnectedState) {
+            continue;
+        }
+
+        QVariantMap map;
+        map["device_id"] = i.key();
+        list.append(map);
+    }
+    return list;
+}
+
+// 学时进度计算
+double TcpBackend::getStudentProgress(const QString &cardId, const QString &subject) {
+    // DbManager::getStudentProgress 返回总秒数
+    int totalSeconds = m_db.getStudentProgress(cardId, subject);
+    // 将学时归一化为 0..1（假设每科需 1 小时 = 3600 秒）
+    double frac = 0.0;
+    if (totalSeconds > 0) {
+        frac = double(totalSeconds) / 3600.0;
+        if (frac > 1.0) frac = 1.0;
+    }
+    return frac;
+}
+
+// 预约相关实现
+QVariantList TcpBackend::getAppointments(){ return m_db.getAppointments();}
+
+bool TcpBackend::updateAppointStatus(int appointmentId, int newStatus){
+    bool ok = m_db.updateAppointmentStatus(appointmentId, newStatus);
+    if(ok){
+        emit appointmentsUpdated();
+        emit databaseUpdated();
+    }
+    return ok;
+}
+
+// 删除预约
+bool TcpBackend::deleteAppoint(int appointmentId){
+    bool ok = m_db.deleteAppointment(appointmentId);
+    if(ok){
+        emit appointmentsUpdated();
+        emit databaseUpdated();
+    }
+    return ok;
 }
 
 bool TcpBackend::login(QString username, QString password) {
@@ -371,4 +463,26 @@ void TcpBackend::sendControlCommand(QString cmd) {
     }
 
     emit messageReceived("[控制指令] 已发送: " + cmd);
+}
+
+void TcpBackend::sendControlToDevice(QString deviceId, QString cmd) {
+    QTcpSocket* targetSock = m_deviceMap.value(deviceId, nullptr);
+    if (!targetSock) {
+        emit messageReceived(QString("[定向指令失败] 找不到在线设备: %1").arg(deviceId));
+        return;
+    }
+
+    if (targetSock->state() == QAbstractSocket::ConnectedState) {
+        QJsonObject obj;
+        obj["type"] = "control";
+        obj["cmd"] = cmd;
+
+        QByteArray data = QJsonDocument(obj).toJson(QJsonDocument::Compact) + "\n";
+        targetSock->write(data);
+        targetSock->flush();
+        emit messageReceived(QString("[定向指令] 已发送至设备 %1: %2").arg(deviceId).arg(cmd));
+        return;
+    }
+
+    emit messageReceived(QString("[定向指令失败] 设备已断开: %1").arg(deviceId));
 }

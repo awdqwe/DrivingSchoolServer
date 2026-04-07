@@ -33,6 +33,7 @@ Item {
                         Label { text: "学员姓名"; Layout.preferredWidth: 150; font.bold: true }
                         Label { text: "得分 / 总分"; Layout.preferredWidth: 150; font.bold: true }
                         Label { text: "考核结果"; Layout.preferredWidth: 120; font.bold: true }
+                        Label { text: "科目"; Layout.preferredWidth: 120; font.bold: true }
                         Label { text: "提交时间"; Layout.fillWidth: true; font.bold: true }
                     }
                 }
@@ -62,6 +63,8 @@ Item {
                                 font.pixelSize: 12
                             }
                         }
+
+                        Label { text: model.subject ? model.subject : "-"; Layout.preferredWidth: 120 }
 
                         Label { text: model.time; Layout.fillWidth: true; color: "#95a5a6" }
                     }

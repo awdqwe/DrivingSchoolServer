@@ -26,16 +26,19 @@ public:
      * @cardId 卡号
      * @action 动作
      * @duration 时长
+     * @deviceId 设备号
+     * @subject 科目
     */
-    bool insertRecord(const QString &cardId, const QString &action, int duration, const QString &deviceId);
-    
+    bool insertRecord(const QString &cardId, const QString &action, int duration, const QString &deviceId, const QString &subject);
+
     /* 插入一条理论成绩记录
      * @cardId 卡号
      * @score 得分
      * @total 总分
      * @deviceId 设备号
+     * @subject 科目
     */
-    bool insertTheoryResult(const QString cardId, int score, int total, const QString deviceId);
+    bool insertTheoryResult(const QString cardId, int score, int total, const QString deviceId, const QString &subject);
 
     /* 注册账户(加入新学员)
      * @cardId 卡号
@@ -44,7 +47,28 @@ public:
     */
     Q_INVOKABLE bool addStudent(const QString &cardId, const QString &name);
 
-    //
+    /* 插入预约记录
+     * @cardId 卡号
+     * @subject 科目
+     * @date 预约日期
+     * @deviceId 设备号
+    */
+    bool insertAppointment(const QString &cardId, const QString &subject, const QString &date, const QString &deviceId);
+    /**
+     * @brief 获取学员学习进度
+     * @param cardId 卡号
+     * @param subject 科目
+     * @return 进度值
+     */
+    int getStudentProgress(const QString &cardId, const QString &subject);
+    // 获取预约列表
+    QVariantList getAppointments();
+
+    // 修改预约状态
+    bool updateAppointmentStatus(int appointmentId, int newStatus);
+    // 删除预约记录
+    bool deleteAppointment(int appointmentId);
+    // 获取理论成绩列表
     QVariantList getTheoryScores();
 
     // 获取/查询所有历史记录

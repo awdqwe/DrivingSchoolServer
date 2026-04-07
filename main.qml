@@ -1,4 +1,4 @@
-// 入口
+﻿// 入口
 import QtQuick 2.14
 import QtQuick.Window 2.14
 import QtQuick.Controls 2.14
@@ -20,13 +20,12 @@ Window {
     property bool isLoggedIn: false
 
     // ============== 全局数据模型 (由各子页面共享) =========
-    ListModel { id: historyModel }        // 训练打卡记录
+        ListModel { id: historyModel }        // 训练打卡记录
     ListModel { id: theoryModel }         // 理论考试成绩
     ListModel { id: activeSessionModel }  // 实时在线设备
+    ListModel { id: connectedDevicesModel } // 已连接设备（发卡页选择）
     ListModel { id: studentsModel }       // 学员名册
-
-    // ================= 后端通信 =================
-    TcpBackend {
+TcpBackend {
         id: backend
         onMessageReceived: logPage.appendLog(">" + msg)
 
@@ -38,6 +37,9 @@ Window {
         }
         onStudentsUpdated: {
             refreshStudentsList()
+        }
+        onDevicesUpdated: {
+            refreshConnectedDevices()
         }
     }
 
@@ -77,7 +79,17 @@ Window {
         }
     }
 
-    // 定时器 刷新设备状态
+    function refreshConnectedDevices() {
+        connectedDevicesModel.clear()
+        var devices = backend.getConnectedDevices()
+        for (var i = 0; i < devices.length; i++) {
+            connectedDevicesModel.append(devices[i])
+        }
+        if (cardIssuePage && cardIssuePage.restoreDeviceSelection) {
+            cardIssuePage.restoreDeviceSelection()
+        }
+    }
+   
     Timer {
         interval: 2000
         running: serverRunning
@@ -88,12 +100,14 @@ Window {
             for (var i = 0; i < sessions.length; i++) {
                 activeSessionModel.append(sessions[i])
             }
+            refreshConnectedDevices()
         }
     }
 
     // 初始化 页面刚加载完毕时 查一次 显示历史记录
     Component.onCompleted: {
         refreshStudentsList()
+        refreshConnectedDevices()
         Helpers.refreshTable(historyModel, backend)
         Helpers.refreshTheoryTable(theoryModel, backend)
     }
@@ -138,6 +152,10 @@ Window {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 currentIndex: 0 // 由 SideBar 控制切换
+                onCurrentIndexChanged: {
+                    if (currentIndex === 1)
+                    refreshStudentsList()
+                }
 
                 DashboardPage {
                     id: dashboardPage
@@ -163,6 +181,7 @@ Window {
                 RecordsPage {
                     model: historyModel
                     onRefreshRequested: Helpers.refreshTable(historyModel, backend)
+                    onExportRequested: backend.exportToCSV()
                 }
 
                 MonitorPage {
@@ -170,9 +189,8 @@ Window {
                 }
 
                 StatisticsPage {
-                    onRefreshRequested: {
-                        Helpers.refreshChart(chartSeries, axisX, axisY, backend)
-                    }
+                    id: statsPage
+                    studentListModel: studentsModel
                 }
 
                 ScorePage {
@@ -185,12 +203,15 @@ Window {
 
                 CardIssuePage {
                     id: cardIssuePage
+                    activeDevicesModel: connectedDevicesModel
                 }
 
-//                SettingPage {
-//                    onSaveConfig: { /* 保存端口、IP等 */ }
-//                }
+                AppointmentPage {
+                   id: appointPage
+                   backend: backend
+                }
             }
         }
     }
 }
+

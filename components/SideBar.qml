@@ -48,7 +48,7 @@ Rectangle {
         NavButton { text: "成绩管理"; iconSource: "qrc:/res/ico/score.ico"; targetIndex: 5; currentIndex: sideBar.currentIndex; onClicked: { sideBar.currentIndex = targetIndex; sideBar.navClicked(targetIndex) } }
         NavButton { text: "系统日志"; iconSource: "qrc:/res/ico/log.ico"; targetIndex: 6; currentIndex: sideBar.currentIndex; onClicked: { sideBar.currentIndex = targetIndex; sideBar.navClicked(targetIndex) } }
         NavButton { text: "发卡中心"; iconSource: "qrc:/res/ico/card.ico"; targetIndex: 7; currentIndex: sideBar.currentIndex; onClicked: { sideBar.currentIndex = targetIndex; sideBar.navClicked(targetIndex) } }
-        NavButton { text: "配置管理"; iconSource: "qrc:/res/ico/home.ico"; targetIndex: 8; currentIndex: sideBar.currentIndex; onClicked: { sideBar.currentIndex = targetIndex; sideBar.navClicked(targetIndex) } }
+        NavButton { text: "练习预约"; iconSource: "qrc:/res/ico/home.ico"; targetIndex: 8; currentIndex: sideBar.currentIndex; onClicked: { sideBar.currentIndex = targetIndex; sideBar.navClicked(targetIndex) } }
 
         Item { Layout.fillHeight: true } // 弹簧 将按钮推向顶部
 

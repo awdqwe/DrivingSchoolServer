@@ -7,6 +7,7 @@ Item {
     id: recordsPage
     property var model: null
     signal refreshRequested()
+    signal exportRequested() 
 
     ColumnLayout {
         anchors.fill: parent
@@ -22,7 +23,8 @@ Item {
                 icon.name: "view-refresh"
                 onClicked: refreshRequested()
             }
-            Button { text: "导出 CSV"; flat: true }
+            // TODO 提示
+            Button { text: "导出 CSV"; flat: true; onClicked: exportRequested() }
         }
 
         Rectangle {
