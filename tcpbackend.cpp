@@ -242,21 +242,56 @@ void TcpBackend::onReadyRead(){
                 query.bindValue(":id", cardId);
 
                 QJsonObject reply;
+                QString status = "new";
+                QString name = "";
 
                 if (query.exec() && query.next()) {
+                    status = "exists";
+                    name = query.value(0).toString();
                     reply["type"] = "issue_reply";
-                    reply["status"] = "exists";
+                    reply["status"] = status;
                     reply["CardID"] = cardId;
-                    reply["name"] = query.value(0).toString();
+                    reply["name"] = name;
                 } else {
                     reply["type"] = "issue_reply";
-                    reply["status"] = "new";
+                    reply["status"] = status;
                     reply["CardID"] = cardId;
-
-                    emit newCardDetected(cardId); // 通知UI
                 }
 
+                // 通知 UI 当前扫描到的卡号及其状态（"new" 或 "exists"），并返回已注册的姓名（若有）
+                emit newCardDetected(cardId, status, name);
+
                 socket->write(QJsonDocument(reply).toJson(QJsonDocument::Compact) + "\n");
+            } else if (type == "appointment" || type == "appoint") {
+                // 设备端提交预约请求的处理（兼容多种键名）
+                QString cardId = jsonObj.value("CardID").toString();
+                // 兼容大小写与常见字段名
+                QString subject = jsonObj.value("subject").toString();
+                if (subject.isEmpty()) subject = jsonObj.value("Subject").toString();
+                if (subject.isEmpty()) subject = jsonObj.value("course").toString();
+
+                QString date = jsonObj.value("date").toString();
+                if (date.isEmpty()) date = jsonObj.value("Date").toString();
+                if (date.isEmpty()) date = jsonObj.value("appointment_date").toString();
+                if (date.isEmpty()) date = jsonObj.value("AppointmentDate").toString();
+                if (date.isEmpty()) date = jsonObj.value("time").toString();
+
+                QString deviceId = jsonObj.value("device_id").toString();
+
+                QJsonObject reply;
+                if (m_db.insertAppointment(cardId, subject, date, deviceId)) {
+                    reply["type"] = "appoint_reply";
+                    reply["status"] = "ok";
+                    reply["CardID"] = cardId;
+                    socket->write(QJsonDocument(reply).toJson(QJsonDocument::Compact) + "\n");
+                    emit messageReceived(QString("[预约] 设备 %1 发起预约：%2 %3").arg(deviceId).arg(cardId).arg(subject));
+                    emit appointmentsUpdated(); // 通知前端刷新预约列表
+                } else {
+                    reply["type"] = "appoint_reply";
+                    reply["status"] = "fail";
+                    socket->write(QJsonDocument(reply).toJson(QJsonDocument::Compact) + "\n");
+                    emit messageReceived("[预约] 写入失败");
+                }
             }
         }else{
             emit messageReceived("  -> [提示] 收到的非 JSON 标准格式数据，仅做展示，不存入数据库。");

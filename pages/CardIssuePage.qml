@@ -9,6 +9,8 @@ Item {
     property bool issueModeActive: false
     property bool serverRunning: false
     property bool canOperateIssueMode: serverRunning
+    property string detectedCardStatus: ""
+    property string detectedCardName: ""
 
     // 由 main.qml 注入在线设备模型
     property var activeDevicesModel: null
@@ -123,11 +125,22 @@ Item {
                         background: Rectangle { radius: 6; color: "#f5f6fa"; border.color: "#dcdde1" }
                     }
 
+                    Label {
+                        id: cardStatusLabel
+                        text: detectedCardStatus === "exists" ? ("该卡已注册: " + detectedCardName) : (detectedCardStatus === "new" ? "检测到新卡，可注册" : "")
+                        color: detectedCardStatus === "exists" ? "#e67e22" : "#27ae60"
+                        visible: detectedCardStatus.length > 0
+                        font.pixelSize: 12
+                        horizontalAlignment: Text.AlignHCenter
+                        Layout.alignment: Qt.AlignHCenter
+                    }
+
                     TextField {
                         id: studentNameInput
                         placeholderText: "输入拟绑定学员姓名"
                         Layout.fillWidth: true
-                        enabled: serverRunning
+                        enabled: serverRunning && detectedCardStatus !== "exists"
+                        readOnly: false
                     }
 
                     Button {
@@ -178,6 +191,8 @@ Item {
                                 console.log("注册成功")
                                 cardUidInput.text = ""
                                 studentNameInput.text = ""
+                                detectedCardStatus = ""
+                                detectedCardName = ""
 
                                 if (issueModeActive && findDeviceIndex(selectedDeviceId) !== -1) {
                                     backend.sendControlToDevice(selectedDeviceId, "exit_issue_mode")

@@ -55,7 +55,7 @@ signals:
     void appointmentsUpdated();
     void studentsUpdated();
     void devicesUpdated();
-    void newCardDetected(QString cardId);
+    void newCardDetected(QString cardId, QString status, QString name);
 
 private slots:
     void onNewConnection();

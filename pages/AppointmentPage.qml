@@ -34,6 +34,7 @@ Item {
             delegate: Rectangle {
                 width: ListView.view.width
                 height: 80
+                property bool busy: false
                 color: modelData.status === 0 ? "#FFF8E1" : "#F5F5F5" // 未读显示黄色
                 radius: 8
                 border.color: modelData.status === 0 ? "#FFC107" : "#DDD"
@@ -66,19 +67,31 @@ Item {
                         spacing: 10
                         Button {
                             text: modelData.status === 0 ? "标为已读" : "标为未读"
+                            enabled: !busy
                             onClicked: {
+                                busy = true
                                 backend.updateAppointStatus(modelData.id, modelData.status === 0 ? 1 : 0)
-                                appointPage.refresh()
+                                // 防止频繁切换，短暂显示加载状态
+                                busyTimer.restart()
                             }
                         }
                         Button {
                             text: "删除"
                             palette.buttonText: "red"
+                            enabled: !busy
                             onClicked: {
+                                busy = true
                                 backend.deleteAppoint(modelData.id)
-                                appointPage.refresh()
+                                busyTimer.restart()
                             }
                         }
+                    }
+                    // 防抖 1.2s
+                    Timer {
+                        id: busyTimer
+                        interval: 1200
+                        repeat: false
+                        onTriggered: busy = false
                     }
                 }
             }

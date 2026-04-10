@@ -46,11 +46,13 @@ TcpBackend {
     Connections {
         target: backend
 
-        function onNewCardDetected(cardId) {
-            console.log("检测到新卡:", cardId)
+        function onNewCardDetected(cardId, status, name) {
+            console.log("检测到新卡:", cardId, status, name)
 
-            // 写入发卡页面输入框
+            // 写入发卡页面输入框并通知发卡页面当前卡状态
             cardIssuePage.cardUid = cardId
+            cardIssuePage.detectedCardStatus = status
+            cardIssuePage.detectedCardName = name
         }
     }
 

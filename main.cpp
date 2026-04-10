@@ -1,9 +1,9 @@
+// 入口函数
 #include <QApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QIcon>
 #include "tcpbackend.h"
-//#include "dbmanager.h"  // DB服务
 
 int main(int argc, char *argv[]){
     qputenv("QT_IM_MODULE", QByteArray("qtvirtualkeyboard"));
