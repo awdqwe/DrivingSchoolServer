@@ -37,6 +37,7 @@ public:
     Q_INVOKABLE bool registerAdmin(QString username, QString password);
 
     Q_INVOKABLE void exportToCSV();
+    Q_INVOKABLE void exportToCSV(const QString &filePath);
     Q_INVOKABLE void sendControlCommand(QString cmd);
     Q_INVOKABLE void sendControlToDevice(QString deviceId, QString cmd);
 

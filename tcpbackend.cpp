@@ -5,6 +5,7 @@
 #include <QCryptographicHash>
 #include <QDebug>
 #include <QFile>
+#include <QUrl> // 处理文件路径
 
 // 辅助函数 加盐哈希
 #include <QCryptographicHash>
@@ -469,7 +470,21 @@ bool TcpBackend::registerAdmin(QString username, QString password) {
 
 // 导出
 void TcpBackend::exportToCSV() {
-    QFile file("Training_Report.csv");
+    // 默认文件名
+    exportToCSV("Training_Report.csv");
+}
+
+void TcpBackend::exportToCSV(const QString &filePath) {
+    if (filePath.isEmpty()) {
+        emit messageReceived("[系统] 导出已取消：未指定文件路径");
+        return;
+    }
+
+    // 处理 QML 可能传入的 file:/// URL，将其转换为本地路径
+    QUrl url = QUrl::fromUserInput(filePath);
+    QString localPath = url.isLocalFile() ? url.toLocalFile() : filePath;
+
+    QFile file(localPath);
     if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
         QTextStream out(&file);
         out << "ID,Name,CardID,Action,Duration,Time\n"; // 表头
@@ -481,7 +496,10 @@ void TcpBackend::exportToCSV() {
                 << map["duration"].toString() << "," << map["timestamp"].toString() << "\n";
         }
         file.close();
-        emit messageReceived("[系统] 报表导出成功：Training_Report.csv");
+        // 发信号通知前端导出成功
+        emit messageReceived("[系统] 报表导出成功：" + file.fileName());
+    } else {
+        emit messageReceived("[错误] 无法打开导出文件：" + localPath);
     }
 }
 

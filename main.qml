@@ -3,6 +3,7 @@ import QtQuick 2.14
 import QtQuick.Window 2.14
 import QtQuick.Controls 2.14
 import QtQuick.Layouts 1.14
+import Qt.labs.platform 1.1 // FileDialog
 import Backend 1.0
 import "pages"
 import "dialogs"
@@ -114,6 +115,23 @@ TcpBackend {
         Helpers.refreshTheoryTable(theoryModel, backend)
     }
 
+    // ================= 全局组件 =======================
+    // 导出 CSV 报表对话框 
+    FileDialog {
+        id: exportDialog
+        title: "导出 CSV 报表"
+        fileMode: FileDialog.SaveFile // 模式为保存
+        nameFilters: ["CSV 文件 (*.csv)"]
+        onAccepted: {
+            // 如果用户选择了同一路径文件，直接覆盖
+            backend.exportToCSV(file)
+        }
+        onRejected: {
+            // 取消导出
+            logPage.appendLog("[系统] 已取消导出操作")
+        }
+    }
+
     // ================= 界面布局 =======================
     LoginOverlay {
         id: loginOverlay
@@ -183,7 +201,7 @@ TcpBackend {
                 RecordsPage {
                     model: historyModel
                     onRefreshRequested: Helpers.refreshTable(historyModel, backend)
-                    onExportRequested: backend.exportToCSV()
+                    onExportRequested: exportDialog.open()
                 }
 
                 MonitorPage {

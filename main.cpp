@@ -19,8 +19,7 @@ int main(int argc, char *argv[]){
      *主版本号(1)
      *次版本号(0)
      *QML中的组件名(TcpBackend)
-    */    
-    // 预计论文中写：“本系统通过 qmlRegisterType 实现了底层 C++ 业务逻辑向 QML 前端安全暴露...”
+    */
     qmlRegisterType<TcpBackend>("Backend", 1, 0, "TcpBackend");
 
     QQmlApplicationEngine engine;

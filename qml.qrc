@@ -12,7 +12,6 @@
         <file>components/TopHeader.qml</file>
         <file>pages/MonitorPage.qml</file>
         <file>pages/CardIssuePage.qml</file>
-        <file>pages/SettingPage.qml</file>
         <file>dialogs/LoginOverlay.qml</file>
         <file>components/NavButton.qml</file>
         <file>pages/AppointmentPage.qml</file>
