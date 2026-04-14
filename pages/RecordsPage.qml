@@ -6,6 +6,7 @@ import QtQuick.Controls 2.14
 Item {
     id: recordsPage
     property var model: null
+    property bool isAdmin: false // 只有管理员登录 显示导出按钮
     signal refreshRequested()
     signal exportRequested() 
 
@@ -26,6 +27,7 @@ Item {
             Button { 
                 text: "导出 CSV"
                 highlighted: true
+                visible: recordsPage.isAdmin // 只有管理员可见
                 onClicked: exportRequested()
             }
         }

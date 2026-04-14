@@ -11,6 +11,8 @@ Rectangle {
 
     // 记录当前选中的索引 用于高亮
     property int currentIndex: 0
+    // 控制日志管理按钮显示
+    property bool isAdmin: false
 
     ColumnLayout {
         anchors.fill: parent
@@ -46,7 +48,7 @@ Rectangle {
         NavButton { text: "实时监控"; iconSource: "qrc:/res/ico/eye.ico"; targetIndex: 3; currentIndex: sideBar.currentIndex; onClicked: { sideBar.currentIndex = targetIndex; sideBar.navClicked(targetIndex) } }
         NavButton { text: "数据统计"; iconSource: "qrc:/res/ico/statistics.ico"; targetIndex: 4; currentIndex: sideBar.currentIndex; onClicked: { sideBar.currentIndex = targetIndex; sideBar.navClicked(targetIndex) } }
         NavButton { text: "成绩管理"; iconSource: "qrc:/res/ico/score.ico"; targetIndex: 5; currentIndex: sideBar.currentIndex; onClicked: { sideBar.currentIndex = targetIndex; sideBar.navClicked(targetIndex) } }
-        NavButton { text: "系统日志"; iconSource: "qrc:/res/ico/log.ico"; targetIndex: 6; currentIndex: sideBar.currentIndex; onClicked: { sideBar.currentIndex = targetIndex; sideBar.navClicked(targetIndex) } }
+        NavButton { text: "系统日志"; iconSource: "qrc:/res/ico/log.ico"; targetIndex: 6; currentIndex: sideBar.currentIndex; visible: sideBar.isAdmin; onClicked: { sideBar.currentIndex = targetIndex; sideBar.navClicked(targetIndex) } }
         NavButton { text: "发卡中心"; iconSource: "qrc:/res/ico/card.ico"; targetIndex: 7; currentIndex: sideBar.currentIndex; onClicked: { sideBar.currentIndex = targetIndex; sideBar.navClicked(targetIndex) } }
         NavButton { text: "练习预约"; iconSource: "qrc:/res/ico/home.ico"; targetIndex: 8; currentIndex: sideBar.currentIndex; onClicked: { sideBar.currentIndex = targetIndex; sideBar.navClicked(targetIndex) } }
 

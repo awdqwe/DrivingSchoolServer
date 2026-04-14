@@ -6,12 +6,15 @@ import QtQuick.Layouts 1.14
 Rectangle {
     property int recordCount: 0
     property bool serverStatus: false
+    property bool isAdmin: false
+    property string currentUser: ""
     color: "white"
 
     RowLayout {
         anchors.fill: parent; anchors.margins: 20
         Label {
-            text: "驾校智能化管理后台"; font.pixelSize: 18; font.bold: true
+            text: isAdmin ? ("驾校智能化管理后台 - 管理员 (" + currentUser + ")") : ("驾校智能化管理教练端 - 欢迎, " + (currentUser === "" ? "教练" : currentUser));
+            font.pixelSize: 18; font.bold: true
         }
         Item { Layout.fillWidth: true }
         Rectangle {

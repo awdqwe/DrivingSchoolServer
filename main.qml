@@ -19,6 +19,8 @@ Window {
     // ================= 全局状态 ====================
     property bool serverRunning: false
     property bool isLoggedIn: false
+    property bool isAdmin: false
+    property string currentUser: "" // 登录用户名，控制权限显示
 
     // ============== 全局数据模型 (由各子页面共享) =========
         ListModel { id: historyModel }        // 训练打卡记录
@@ -138,7 +140,18 @@ TcpBackend {
         anchors.fill: parent
         visible: !isLoggedIn
         z: 999
-        onLoginSuccess: isLoggedIn = true
+        onLoginSuccess: {
+            isLoggedIn = true
+            currentUser = username
+            isAdmin = (username === "root")
+            sideBar.isAdmin = isAdmin
+            // 更新头部和记录页权限
+            topHeader.isAdmin = isAdmin
+            topHeader.currentUser = currentUser
+            recordsPage.isAdmin = isAdmin
+            // 控制日志页可见性
+            logPage.visible = isAdmin
+        }
     }
 
     RowLayout {
@@ -151,6 +164,7 @@ TcpBackend {
             id: sideBar
             Layout.preferredWidth: 220
             Layout.fillHeight: true
+            isAdmin: root.isAdmin
             onNavClicked: stack.currentIndex = index
         }
 
@@ -161,10 +175,13 @@ TcpBackend {
             spacing: 0
 
             TopHeader {
+                id: topHeader
                 Layout.fillWidth: true
                 Layout.preferredHeight: 60
                 recordCount: historyModel.count
                 serverStatus: root.serverRunning
+                isAdmin: root.isAdmin
+                currentUser: root.currentUser
             }
 
             StackLayout {
@@ -199,9 +216,11 @@ TcpBackend {
                 }
 
                 RecordsPage {
+                    id: recordsPage
                     model: historyModel
                     onRefreshRequested: Helpers.refreshTable(historyModel, backend)
                     onExportRequested: exportDialog.open()
+                    isAdmin: root.isAdmin
                 }
 
                 MonitorPage {
@@ -219,6 +238,7 @@ TcpBackend {
 
                 LogPage {
                     id: logPage
+                    visible: root.isAdmin
                 }
 
                 CardIssuePage {

@@ -5,7 +5,7 @@ import QtQuick.Layouts 1.14
 Rectangle {
     id: loginRoot
     color: "#2c3e50"
-    signal loginSuccess()
+    signal loginSuccess(string username) // 登录成功信号，传递用户名
 
     property bool isRegisterMode: false
 
@@ -62,7 +62,7 @@ Rectangle {
                     }
                 } else {
                     if (backend.login(userField.text, passField.text)) {
-                        loginRoot.loginSuccess()
+                        loginRoot.loginSuccess(userField.text)
                     } else {
                         errorText.color = "#e74c3c"
                         errorText.text = "用户名或密码错误"
