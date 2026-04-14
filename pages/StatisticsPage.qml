@@ -64,6 +64,7 @@ Item {
             
             Button {
                 text: "刷新数据"
+                highlighted: true
                 onClicked: refreshProgress()
             }
         }

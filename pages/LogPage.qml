@@ -25,6 +25,7 @@ Item {
             Item { Layout.fillWidth: true }
             Button {
                 text: "清空日志"
+                highlighted: true
                 onClicked: logArea.clear()
             }
         }

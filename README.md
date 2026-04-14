@@ -167,6 +167,5 @@ C:.
     MonitorPage.qml
     RecordsPage.qml
     ScorePage.qml
-    SettingPage.qml
     StatisticsPage.qml
     StudentPage.qml

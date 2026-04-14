@@ -20,11 +20,14 @@ Item {
             Item { Layout.fillWidth: true }
             Button {
                 text: "刷新数据"
-                icon.name: "view-refresh"
+                highlighted: true
                 onClicked: refreshRequested()
             }
-            // TODO 提示
-            Button { text: "导出 CSV"; flat: true; onClicked: exportRequested() }
+            Button { 
+                text: "导出 CSV"
+                highlighted: true
+                onClicked: exportRequested()
+            }
         }
 
         Rectangle {

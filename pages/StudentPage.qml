@@ -68,9 +68,6 @@ Item {
                 onTextChanged: rebuildFiltered()
             }
 
-            // 简单过滤实现：基于传入的 model（学生列表）构建本地 filteredModel
-            // 当外部 model 变化或输入框变化时调用 rebuildFiltered()
-
             Button {
                 text: "新增学员"
                 highlighted: true
