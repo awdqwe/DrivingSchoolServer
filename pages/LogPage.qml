@@ -46,10 +46,13 @@ Item {
                 TextArea {
                     id: logArea
                     readOnly: true
+                    selectByMouse: true
+                    selectionColor: "#3498db"
+                    selectedTextColor: "white"
                     font.family: "Consolas"
                     font.pixelSize: 12
                     color: "#dcdcdc"
-                    wrapMode: Text.WrapAnywhere
+                    wrapMode: TextArea.WrapAnywhere
 
                     background: null // 去掉自带背景
 
@@ -59,12 +62,6 @@ Item {
                     }
                 }
             }
-        }
-
-        Label {
-            text: "提示：双击日志区域可进行全选复制，用于系统联调分析。"
-            font.pixelSize: 11
-            color: "#95a5a6"
         }
     }
 }

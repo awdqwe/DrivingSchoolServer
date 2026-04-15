@@ -66,8 +66,8 @@ bool DbManager::initDb(){
     QString createUsersSql = R"(
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT NOT NULL UNIQUE,
-            password_hash TEXT NOT NULL,
+            username TEXT NOT NULL UNIQUE CHECK(LENGTH(username) BETWEEN 1 AND 20), -- 用户名长度限制  1-20 字符
+            password_hash TEXT NOT NULL, -- password_hash 实际长度为 64 字符（SHA-256 的十六进制表示）
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     )";

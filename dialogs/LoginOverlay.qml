@@ -21,28 +21,40 @@ Rectangle {
 
         TextField {
             id: userField; placeholderText: "用户名"
-            Layout.fillWidth: true
+            Layout.fillWidth: true // 占满宽度
+            maximumLength: 20
         }
 
         TextField {
             id: passField; placeholderText: "密码"
             echoMode: TextInput.Password; Layout.fillWidth: true
+            maximumLength: 20
         }
 
         Button {
             text: isRegisterMode ? "注册" : "登录"
             Layout.fillWidth: true
             onClicked: {
-                if (userField.text.length === 0 || passField.text.length === 0) {
-                    errorText.text = "用户名或密码不能为空"
+                // 账号密码规范检查
+                var username = userField.text.trim() 
+                var password = passField.text.trim()
+                if (username.length === 0) {
+                    errorText.color = "#e74c3c"
+                    errorText.text = "用户名不能为空"
+                    return
+                } else if (username.length < 1 || username.length > 20) {
+                    errorText.color = "#e74c3c"
+                    errorText.text = "用户名长度必须在1-20位之间"
                     return
                 }
 
-                // 密码规范检查
-                var pwdLength = passField.text.length
-                if (pwdLength < 6 || pwdLength > 20) {
+                if (password.length === 0) {
                     errorText.color = "#e74c3c"
-                    errorText.text = "密码长度必须为6-20位"
+                    errorText.text = "密码不能为空"
+                    return
+                } else if (password.length < 6 || password.length > 20) {
+                    errorText.color = "#e74c3c"
+                    errorText.text = "密码长度必须在6-20位之间"
                     return
                 }
 

@@ -149,8 +149,7 @@ TcpBackend {
             topHeader.isAdmin = isAdmin
             topHeader.currentUser = currentUser
             recordsPage.isAdmin = isAdmin
-            // 控制日志页可见性
-            logPage.visible = isAdmin
+            // 日志页的可见性由 StackLayout 的当前页与管理员权限共同控制
         }
     }
 
@@ -193,7 +192,7 @@ TcpBackend {
                     if (currentIndex === 1)
                     refreshStudentsList()
                 }
-
+                // 0 系统概览
                 DashboardPage {
                     id: dashboardPage
                     isRunning: root.serverRunning
@@ -204,7 +203,7 @@ TcpBackend {
                         root.serverRunning = true
                     }
                 }
-
+                // 1 学员管理
                 StudentPage {
                     model: studentsModel
                     onActionRegister: (name, card) => {
@@ -214,7 +213,7 @@ TcpBackend {
                         if (backend.deleteStudent(card)) refreshStudentsList()
                     }
                 }
-
+                // 2 训练记录
                 RecordsPage {
                     id: recordsPage
                     model: historyModel
@@ -222,30 +221,30 @@ TcpBackend {
                     onExportRequested: exportDialog.open()
                     isAdmin: root.isAdmin
                 }
-
+                // 3 实时监控
                 MonitorPage {
                     model: activeSessionModel
                 }
-
+                // 4 统计分析
                 StatisticsPage {
                     id: statsPage
                     studentListModel: studentsModel
                 }
-
+                // 5 理论考试
                 ScorePage {
                     model: theoryModel
                 }
-
+                // 6 系统日志（仅管理员可见）
                 LogPage {
                     id: logPage
-                    visible: root.isAdmin
+                    visible: root.isAdmin && 6 === stack.currentIndex
                 }
-
+                // 7 发卡注册
                 CardIssuePage {
                     id: cardIssuePage
                     activeDevicesModel: connectedDevicesModel
                 }
-
+                // 8 预约管理
                 AppointmentPage {
                    id: appointPage
                    backend: backend
