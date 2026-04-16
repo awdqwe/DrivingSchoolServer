@@ -46,6 +46,13 @@ public:
      * @Q_INVOKABLE 让 QML 直接调用注册
     */
     Q_INVOKABLE bool addStudent(const QString &cardId, const QString &name);
+    /**
+     * @brief 更新学员姓名
+     * @param cardId 卡号
+     * @param newName 新姓名
+     * @return 是否更新成功
+     */
+    Q_INVOKABLE bool updateStudentName(const QString &cardId, const QString &newName);
 
     /* 插入预约记录
      * @cardId 卡号

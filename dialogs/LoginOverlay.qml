@@ -93,8 +93,7 @@ Rectangle {
                 passField.text = ""
             }
         }
-
-
+        // 错误提示
         Label { id: errorText; color: "#e74c3c"; Layout.alignment: Qt.AlignHCenter }
     }
 }

@@ -335,6 +335,18 @@ bool TcpBackend::registerNewStudent(const QString &cardId, const QString &name){
     if (ok) emit studentsUpdated(); // 注册成功发射信号
     return ok;
 }
+// 更新学员姓名
+bool TcpBackend::updateStudentName(const QString &cardId, const QString &newName) {
+    bool ok = m_db.updateStudentName(cardId, newName);
+    if (ok) {
+        emit studentsUpdated();
+        emit databaseUpdated();
+        emit messageReceived(QString("[系统] 已更新学员姓名: %1 -> %2").arg(cardId).arg(newName));
+    } else {
+        emit messageReceived(QString("[错误] 更新学员姓名失败: %1").arg(cardId));
+    }
+    return ok;
+}
 // 校验
 bool TcpBackend::verifySignature(const QJsonObject &obj) {
     QString clientSign = obj.value("sign").toString();

@@ -19,11 +19,11 @@ Window {
     // ================= 全局状态 ====================
     property bool serverRunning: false
     property bool isLoggedIn: false
-    property bool isAdmin: false
+    property bool isAdmin: false // 是否管理员，控制权限显示
     property string currentUser: "" // 登录用户名，控制权限显示
 
     // ============== 全局数据模型 (由各子页面共享) =========
-        ListModel { id: historyModel }        // 训练打卡记录
+    ListModel { id: historyModel }        // 训练打卡记录
     ListModel { id: theoryModel }         // 理论考试成绩
     ListModel { id: activeSessionModel }  // 实时在线设备
     ListModel { id: connectedDevicesModel } // 已连接设备（发卡页选择）
@@ -48,10 +48,9 @@ TcpBackend {
 
     Connections {
         target: backend
-
+        // 监听新卡检测事件，更新发卡页面状态
         function onNewCardDetected(cardId, status, name) {
             console.log("检测到新卡:", cardId, status, name)
-
             // 写入发卡页面输入框并通知发卡页面当前卡状态
             cardIssuePage.cardUid = cardId
             cardIssuePage.detectedCardStatus = status
@@ -140,10 +139,11 @@ TcpBackend {
         anchors.fill: parent
         visible: !isLoggedIn
         z: 999
+        // 登录成功回调，更新全局登录状态和权限控制
         onLoginSuccess: {
             isLoggedIn = true
             currentUser = username
-            isAdmin = (username === "root")
+            isAdmin = (username === "admin")
             sideBar.isAdmin = isAdmin
             // 更新头部和记录页权限
             topHeader.isAdmin = isAdmin

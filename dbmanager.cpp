@@ -25,7 +25,7 @@ bool DbManager::initDb(){
     }
     qDebug() << "[成功]数据库已连接，文件路径:" << dbPath << endl;
 
-    // 创建表: students
+    // 创建表: students (学员)
     QSqlQuery query;
     QString createTableSql = R"(
             CREATE TABLE IF NOT EXISTS students (
@@ -104,6 +104,15 @@ bool DbManager::addStudent(const QString &cardId, const QString &name){
     query.prepare("INSERT OR IGNORE INTO students (card_id, name) VALUES (:card_id, :name)");
     query.bindValue(":card_id", cardId);
     query.bindValue(":name", name);
+    return query.exec();
+}
+// 更新学员姓名
+bool DbManager::updateStudentName(const QString &cardId, const QString &newName){
+    if (!main_db.isOpen()) return false;
+    QSqlQuery query;
+    query.prepare("UPDATE students SET name = :name WHERE card_id = :card_id");
+    query.bindValue(":name", newName);
+    query.bindValue(":card_id", cardId);
     return query.exec();
 }
 

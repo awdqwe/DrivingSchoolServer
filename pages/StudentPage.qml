@@ -14,7 +14,7 @@ Item {
 
     ListModel { id: filteredModel } // 本地过滤模型
 
-    // 过滤函数
+    // 根据 searchInput 过滤 studentPage.model，更新 filteredModel 显示
     function rebuildFiltered(){
         filteredModel.clear()
         if (!studentPage.model) return
@@ -35,7 +35,8 @@ Item {
 
     // 同一 ListModel 引用下 clear/append 不会触发 onModelChanged，需监听 count
     Connections {
-        target: studentPage.model
+        target: studentPage.model ? studentPage.model : null
+        ignoreUnknownSignals: true // 避免 model 切换时连接错误
         function onCountChanged() { rebuildFiltered() }
     }
 
@@ -93,9 +94,9 @@ Item {
                         anchors.fill: parent; anchors.margins: 15
                         Label { text: "学员姓名"; Layout.preferredWidth: 200; font.bold: true }
                         Label { text: "物理卡号 (UID)"; Layout.preferredWidth: 200; font.bold: true }
-                        Label { text: "状态"; Layout.preferredWidth: 150; font.bold: true }
-                        Item { Layout.fillWidth: true }
-                        Label { text: "操作"; Layout.preferredWidth: 100; font.bold: true }
+                        Label { text: "修改姓名"; Layout.preferredWidth: 150; font.bold: true }
+                        Item { Layout.fillWidth: true } // 填充剩余空间
+                        Label { text: "删除"; Layout.preferredWidth: 100; font.bold: true }
                     }
                 }
 
@@ -116,18 +117,31 @@ Item {
 
                             RowLayout {
                                 anchors.fill: parent; anchors.margins: 15
-                                Label { text: model.name; Layout.preferredWidth: 200; font.pixelSize: 14 }
+                                
+                                Label {
+                                    text: model.name
+                                    Layout.preferredWidth: 200
+                                    color: "#2c3e50"
+                                    font.pixelSize: 14
+                                }
                                 Label { text: model.card_id; Layout.preferredWidth: 200; color: "#2980b9"; font.family: "Consolas" }
-                                Rectangle {
-                                    Layout.preferredWidth: 60; height: 24; radius: 12
-                                    color: "#e8f5e9"
-                                    Text { anchors.centerIn: parent; text: "正常"; color: "#2e7d32"; font.pixelSize: 11 }
+                                Button {
+                                    text: "修改姓名"
+                                    Layout.preferredWidth: 100
+
+                                    onClicked: {
+                                        editDialog.cardId = model.card_id
+                                        editDialog.oldName = model.name
+                                        editDialog.open()
+                                    }
                                 }
                                 Item { Layout.fillWidth: true }
                                 Button {
                                     text: "删除"
-                                    flat: true
-                                    contentItem: Text { text: "删除"; color: "#e74c3c" }
+                                    Layout.preferredWidth: 100
+
+                                    palette.buttonText: "#e74c3c"
+
                                     onClicked: {
                                         deleteConfirmDialog.cardToDelete = model.card_id
                                         deleteConfirmDialog.open()
@@ -197,11 +211,14 @@ Item {
         id: deleteConfirmDialog
         property string cardToDelete: ""
         title: "确认删除学员"
-        standardButtons: Dialog.Ok | Dialog.Cancel
+        standardButtons: Dialog.NoButton
         anchors.centerIn: parent
         width: 360
+
         ColumnLayout {
             width: parent.width
+            spacing: 10
+
             Label {
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
@@ -209,12 +226,80 @@ Item {
                       ? ("确定从档案中删除卡号「" + deleteConfirmDialog.cardToDelete + "」对应的学员吗？此操作不可撤销。")
                       : ""
             }
+
+            RowLayout {
+                Layout.alignment: Qt.AlignRight
+                spacing: 8
+
+                Button {
+                    text: "取消"
+                    onClicked: {
+                        deleteConfirmDialog.cardToDelete = ""
+                        deleteConfirmDialog.close()
+                    }
+                }
+
+                Button {
+                    text: "确定"
+                    highlighted: true
+                    onClicked: {
+                        if (deleteConfirmDialog.cardToDelete.length) {
+                            actionDelete(deleteConfirmDialog.cardToDelete)
+                        }
+                        deleteConfirmDialog.cardToDelete = ""
+                        deleteConfirmDialog.close()
+                    }
+                }
+            }
         }
-        onAccepted: {
-            if (cardToDelete.length)
-                actionDelete(cardToDelete)
-            cardToDelete = ""
-        }
-        onRejected: cardToDelete = ""
     }
+
+    Dialog {
+        id: editDialog
+        property string cardId: ""
+        property string oldName: ""
+
+        title: "修改学员姓名"
+        modal: true
+        anchors.centerIn: parent
+        width: 300
+
+        ColumnLayout {
+            width: parent.width
+            spacing: 10
+
+            TextField {
+                id: newNameInput
+                Layout.fillWidth: true
+                text: editDialog.oldName
+                placeholderText: "输入新姓名"
+            }
+
+            RowLayout {
+                Layout.alignment: Qt.AlignRight
+
+                Button {
+                    text: "取消"
+                    onClicked: editDialog.close()
+                }
+
+                Button {
+                    text: "确定"
+                    highlighted: true
+                    onClicked: {
+                        var nm = newNameInput.text.trim()
+                        if (nm.length === 0) return
+
+                        if (!backend.updateStudentName(editDialog.cardId, nm)) {
+                            return
+                        }
+                        rebuildFiltered() // 本地更新显示
+
+                        editDialog.close()
+                    }
+                }
+            }
+        }
+    }
+
 }

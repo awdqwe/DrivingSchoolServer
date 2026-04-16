@@ -1,12 +1,5 @@
-# 一、硬件方案
-树莓派(4代B型 4G ram) + RC522 RFID 模块（刷卡模块）
-在真实的驾校系统中，“学员上车刷卡签到，下车刷卡签退”是最核心的物联网动作。这个硬件能提供实物交互演示
-# 二、软件方案
-1. 树莓派端软件设计 (C/C++ Linux)
-    多线程并发 (std::thread)：
-    离线缓存机制：如果在练车过程中网络断开，C++ 程序能将数据暂存在树莓派的本地（写进文件里），等网络恢复后，再把“断网期间的学时数据”补传给 PC。
-    JSON 数据格式：树莓派和 PC 通信采用跨平台的 JSON 格式（可以使用轻量级的开源库如 nlohmann/json ）。
-2. PC端软件设计 (C++ & Qt)
+# 软件方案
+C++ & Qt
     TCP 并发服务器：使用 Qt 的 QTcpServer，能够同时接入多个“树莓派车辆”（程序架构上支持多车同时练车，体现扩展性）。
     MVC 架构的 UI 设计：
     大屏监控界面：实时显示车辆状态（学员姓名、已练时长、当前模拟车速）。可以使用 QtCharts 画一个动态折线图，显示车速变化。
@@ -17,99 +10,72 @@
     通信协议选 TCP。TCP 是一种“面向连接”的协议。当树莓派开机连上服务端时，服务端能确切知道“1号车已上线”；如果树莓派断电或开到没有 WiFi 的地方，TCP 连接断开，服务端会立刻触发 disconnected 信号，界面上就能把这辆车标红显示“离线”。UDP 无法原生做到这一点
     多表关联（JOIN）”和“身份解析”
 
-# 三、安装 bcm2835 库
-    开启树莓派的 SPI 通信接口
-    下载 C++ 硬件驱动库 (bcm2835)
-        wget http://www.airspayce.com/mikem/bcm2835/bcm2835-1.73.tar.gz
-        tar zxvf bcm2835-1.73.tar.gz
-        cd bcm2835-1.73
-        ./configure
-        make
-        sudo make check
-        sudo make install
-# 四、安装 QT5 环境
-    sudo apt update
-    sudo apt install qtbase5-dev qt5-qmake qtbase5-dev-tools -y
-    sudo apt install qtdeclarative5-dev
-    sudo apt install qml-module-qtquick-controls2
+# DrivingSchoolServer (服务端)
+    简介
+    这是驾校管理中枢的服务端桌面应用，基于 C++/Qt（QML 前端 + C++ 后端），负责：
+    - 接收并解析来自车载终端（树莓派）的 TCP JSON 消息；
+    - 持久化学员与打卡记录（使用 SQLite，通过 `DbManager` 封装）；
+    - 为 QML 界面提供应用层 API（通过 `TcpBackend` 暴露的 `Q_INVOKABLE` 方法）；
+    - 提供管理界面用于监控在线设备、查看/导出记录、发卡与预约管理。
 
+    项目定位
+    - 本仓库为服务端（Server）。客户端（车载或管理移动端）位于：
+      - C:\Users\vvvvvv\Desktop\Proj\GUI_CLIENT_G\README.md（独立仓库/路径）
 
-# （本系统基于 Linux 环境，通过移植开源的 MFRC522 C++ 类库，调用底层 bcm2835 驱动直接操作硬件 SPI 寄存器。
-    实现了对实体射频卡的精准轮询读取，并将物理 UID 序列号进行十六进制序列化后，封装为 JSON 格式实时推送至管理中枢……）
-#  TCP 的套接字 sock 是在 RfidThread::run() 里的一个局部变量。
-    而 DeviceBackend::uploadTheoryResult 是在主线程（GUI线程）里执行的。
-    主线程无法直接跨线程调用局部的 sock 来发送数据。
-    为了解决这个问题，需要在 RfidThread 里增加一个线程安全的发送队列（使用 QMutex 锁和 QQueue 队列）。
-    主线程把答题成绩塞进队列，RfidThread 在它自己的死循环里不断检查队列并发送出去。
-# 系统采用“业务与通信解耦架构”，将数据生成与网络发送分离，
-    通过 Qt 信号槽实现跨线程通信，提高系统可维护性与扩展性。
+    主要文件与位置
+    - 入口与 UI: [main.qml](main.qml)
+    - 服务后端实现: [tcpbackend.h](tcpbackend.h), [tcpbackend.cpp](tcpbackend.cpp)
+    - 数据库封装: [dbmanager.h](dbmanager.h), [dbmanager.cpp](dbmanager.cpp)
+    - QML 页面: [pages/LogPage.qml](pages/LogPage.qml), [pages/DashboardPage.qml](pages/DashboardPage.qml) 等
+    - 项目文件: [DrivingSchoolServer.pro](DrivingSchoolServer.pro)
 
-# （陷阱： RFID 刷卡代码里，有一个 while(true) 死循环（无限轮询硬件）。如果把这个死循环直接
-    塞进带有 UI 界面的程序里，界面的主线程就会被瞬间卡死（假死），按钮点不动，画面也会卡住。破局方案（下一步）：
-    我们将采用**“多线程（Multi-threading）+ 信号槽”**架构
-    1、主线程（UI 线程）：负责跑“车载打卡界面”
-    2、子线程（工作线程）：把 while(true) 的硬件刷卡代码扔到后台子线程去跑。当子线程读到卡号后，通过跨线程的
-        Signal（信号） 发送给前台 UI ）
+    协议概览（JSON over TCP）
+    - 常见消息类型：`card`, `theory`, `heartbeat`, `issue_card`, `appointment` 等；
+    - 后端要求消息以换行符 `\n` 结束，一条消息一行；
+    - 为防篡改，消息携带签名字段 `sign` 与 `timestamp`；签名服务端校验逻辑见 [tcpbackend.cpp](tcpbackend.cpp) 的 `verifySignature()`：
+      - 签名原文示例：`CardID + type + timestamp + subject + secretKey`，然后取 MD5；
+      - secretKey 在 [tcpbackend.h](tcpbackend.h) 中有默认字符串（可在编译时或配置中修改）。
 
-# 由于车载终端处于复杂的边缘网络环境中，如果有黑客使用网络调试助手，直连服务端
-    8888 端口，发送伪造的 JSON（如：{"CardID":"VIP123", "Action":"下车签退", "Duration": 99999}），
-    就可以实现恶意刷学时。
-    为此，本系统在 TCP 应用层引入了 Salt（加盐）机制与 MD5 数字签名算法，彻底杜绝了数据在传输过程中的篡改与伪造。
-    如果黑客篡改了 Duration（比如改成 99999），但他不知道 secretKey，算出来的 MD5 绝对和 clientSign 对不上
+    数据库与表（概要）
+    - 使用 SQLite，通过 `DbManager` 管理。常见表包括：`students`, `records`, `users`, `appointments`, `theory_scores`（名称可能略有不同，详见 `dbmanager.*`）。
 
-# 加入心跳机制 解决设备异常关闭问题
-    步骤1，给数据库中的表加一项设备号，表示”学员在哪一个设备练习的“
-        区分同一个学员在不同车辆上的练习，避免数据混淆
-    步骤2，设备周期性发送心跳包给PC端，内容大概为“卡号为xxx的人，在设备号为xxx的车中练习”。
-        感知练习状态
-    步骤3，PC端接收心跳，收到即回复（或者可以不回复），一段时间内没收到就认为设备关闭，将自己生成一条下车签退的数据写进数据库。
-    步骤4，如果要让步骤3能正常进行，需要给PC端也写一个计时器。
-        检测心跳超时
+    构建与运行（推荐）
+    - 推荐使用 Qt Creator 打开 `DrivingSchoolServer.pro` 并运行；或使用命令行：
 
+    ```bash
+    # 在 Qt 环境下（Windows 示例，使用 MinGW）
+    qmake DrivingSchoolServer.pro
+    mingw32-make
+    ./DrivingSchoolServer.exe
+    ```
 
+    配置与启动
+    - 默认服务端口可由 UI 触发启动（代码示例在 [main.qml](main.qml) 中调用 `backend.startServer(8888)`）；
+    - 如果你需要修改端口或 secretKey，请在 [tcpbackend.h](tcpbackend.h) 中更新或将其改为通过外部配置加载。
 
+    主要运行时行为
+    - 当设备连接/断开会在 UI 生成通知（`messageReceived` 信号）；
+    - 收到 `card` 类型并校验通过后会写入记录并返回 `ack`；
+    - `heartbeat` 用于维持在线状态；后端有定期检查定时器，会自动超时结算异常断开的会话。
 
+    调试与日志
+    - UI 内的 `系统日志` 页面由 [pages/LogPage.qml](pages/LogPage.qml) 提供；仅管理员可见（管理员判定与用户表有关，UI 中用户名为 `root` 的账号会被视作管理员）。
 
+    已知/修复事项
+    - 为避免 `LogPage` 在非激活页面发生“重影”的显示问题，推荐在 `main.qml` 中根据 `StackLayout` 的 `currentIndex` 控制 `LogPage` 的 `visible` 属性（项目中已将其改为：`visible: root.isAdmin && stack.children.indexOf(logPage) === stack.currentIndex`）。
 
+    扩展与开发建议
+    - 考虑使用 `Loader` 或 `StackView` 延迟加载较重页面以节省内存；
+    - 将 `secretKey` 与可变配置移动到外部配置文件或命令行参数，避免硬编码；
+    - 为生产环境提升签名到 HMAC-SHA256，并在设备端与服务端统一实现签名细节。
 
-## 回应消息详情
-# 刷卡签到 
-    触发条件: 数据库插入成功时返回
-    {
-        "type": "ack",
-        "status": "success",
-        "CardID": "卡片ID",
-        "name": "学员姓名",
-        "action": "上车签到/下车签退",
-        "duration": 时长数值
-    }
+    ---
+    （本 README 依据工程源码自动整理；如需把 README 进一步本地化为部署文档或运维手册，我可以继续补充）
 
-# 理论成绩
-    触发条件: 理论成绩入库成功时返回
-    {
-        "type": "ack",
-        "status": "theory_ok",
-        "CardID": "卡片ID"
-    }
-    
-# 发卡消息
-    已注册卡片
-    {
-        "type": "issue_reply",
-        "status": "exists",
-        "CardID": "卡片ID",
-        "name": "学员姓名"
-    }
-    新卡
-    {
-        "type": "issue_reply",
-        "status": "new",
-        "CardID": "卡片ID"
-    }
-
-## 基本结构
+## 工程结构
 C:.
 │  dbmanager.cpp
+│  dbmanager.cpp.autosave
 │  dbmanager.h
 │  DrivingSchoolServer.pro
 │  DrivingSchoolServer.pro.user
@@ -123,36 +89,38 @@ C:.
 │  tcpbackend.h
 │
 ├─.vscode
-│  settings.json
+│      settings.json
 │
 ├─components
-│  NavButton.qml
-│  sidebar.qml
-│  TopHeader.qml
+│      NavButton.qml
+│      sidebar.qml
+│      TopHeader.qml
 │
 ├─dialogs
-│  LoginOverlay.qml
+│      LoginOverlay.qml
 │
 ├─ico
-│  add.ico
-│  card.ico
-│  eye.ico
-│  home.ico
-│  icon.ico
-│  log.ico
-│  records.ico
-│  score.ico
-│  statistics.ico
-│  student.ico
-│  usr.ico
+│      add.ico
+│      card.ico
+│      eye.ico
+│      home.ico
+│      icon.ico
+│      log.ico
+│      records.ico
+│      score.ico
+│      statistics.ico
+│      student.ico
+│      usr.ico
 │
-└─pages
-    AppointmentPage.qml
-    CardIssuePage.qml
-    DashboardPage.qml
-    LogPage.qml
-    MonitorPage.qml
-    RecordsPage.qml
-    ScorePage.qml
-    StatisticsPage.qml
-    StudentPage.qml
+├─pages
+│      AppointmentPage.qml
+│      CardIssuePage.qml
+│      DashboardPage.qml
+│      LogPage.qml
+│      MonitorPage.qml
+│      RecordsPage.qml
+│      ScorePage.qml
+│      StatisticsPage.qml
+│      StudentPage.qml
+│
+└─tools

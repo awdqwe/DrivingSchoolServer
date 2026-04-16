@@ -17,12 +17,14 @@ class TcpBackend : public QObject
 public:
     explicit TcpBackend(QObject *parent = nullptr);
 
+    // 供 QML 调用的启动服务器函数
     Q_INVOKABLE void startServer(int port);
     Q_INVOKABLE QVariantList getHistoryRecords();
     Q_INVOKABLE bool registerNewStudent(const QString &cardId, const QString &name);
     Q_INVOKABLE QVariantList getLeaderboard() { return m_db.getLeaderboard(); }
     Q_INVOKABLE QVariantList getTheoryScores() { return m_db.getTheoryScores(); }
     Q_INVOKABLE QVariantList getStudents();
+    Q_INVOKABLE bool updateStudentName(const QString &cardId, const QString &newName);
     Q_INVOKABLE double getStudentProgress(const QString &cardId, const QString &subject);
     Q_INVOKABLE bool deleteStudent(const QString cardId);
     Q_INVOKABLE QVariantList getActiveSessions();
