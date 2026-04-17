@@ -54,6 +54,11 @@ public:
      */
     Q_INVOKABLE bool updateStudentName(const QString &cardId, const QString &newName);
 
+    /* 删除学员及其关联数据（records/theory_results/appointments）
+     *  使用事务保证一致性
+     */
+    Q_INVOKABLE bool deleteStudent(const QString &cardId);
+
     /* 插入预约记录
      * @cardId 卡号
      * @subject 科目
@@ -73,7 +78,7 @@ public:
 
     // 修改预约状态
     bool updateAppointmentStatus(int appointmentId, int newStatus);
-    // 删除预约记录
+    // 删除预约消息
     bool deleteAppointment(int appointmentId);
     // 获取理论成绩列表
     QVariantList getTheoryScores();

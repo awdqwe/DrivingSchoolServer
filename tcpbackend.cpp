@@ -149,6 +149,7 @@ void TcpBackend::onReadyRead(){
 
                 // 身份校验
                 QSqlQuery queryCheck;
+                // 查询学生表，验证卡号是否合法
                 queryCheck.prepare("SELECT name FROM students WHERE card_id = :id");
                 queryCheck.bindValue(":id", cardId);
 
@@ -189,7 +190,7 @@ void TcpBackend::onReadyRead(){
                 }
                 
             } else if (type == "theory") {
-                QString cardId = jsonObj.value("cardId").toString();
+                QString cardId = jsonObj.value("CardID").toString();
                 int score = jsonObj.value("score").toInt();
                 int total = jsonObj.value("total").toInt();
                 QString deviceId = jsonObj.value("device_id").toString();
@@ -377,16 +378,16 @@ QVariantList TcpBackend::getStudents() {
     }
     return list;
 }
-// 删除学员
+// 删除学员（执行级联删除：records/theory_results/appointments -> students）
 bool TcpBackend::deleteStudent(const QString cardId) {
-    QSqlQuery query;
-    query.prepare("DELETE FROM students WHERE card_id = ?");
-    query.addBindValue(cardId);
-    if(query.exec()) {
+    bool ok = m_db.deleteStudent(cardId);
+    if (ok) {
         emit studentsUpdated();
         emit databaseUpdated();
+        emit messageReceived(QString("[系统] 已删除学员：%1（相关记录已一并移除）").arg(cardId));
         return true;
     }
+    emit messageReceived(QString("[错误] 删除学员失败：%1").arg(cardId));
     return false;
 }
 
@@ -450,7 +451,7 @@ bool TcpBackend::updateAppointStatus(int appointmentId, int newStatus){
     return ok;
 }
 
-// 删除预约
+// 删除预约消息
 bool TcpBackend::deleteAppoint(int appointmentId){
     bool ok = m_db.deleteAppointment(appointmentId);
     if(ok){

@@ -265,7 +265,7 @@ bool DbManager::updateAppointmentStatus(int appointmentId, int newStatus) {
     return query.exec();
 }
 
-// 删除预约记录
+// 删除预约消息
 bool DbManager::deleteAppointment(int appointmentId) {
     if (!main_db.isOpen()) return false;
 
@@ -273,6 +273,38 @@ bool DbManager::deleteAppointment(int appointmentId) {
     query.prepare("DELETE FROM appointments WHERE id = :id");
     query.bindValue(":id", appointmentId);
     return query.exec();
+}
+
+// 删除学员及其关联数据（records/theory_results/appointments）
+bool DbManager::deleteStudent(const QString &cardId) {
+    if (!main_db.isOpen()) return false;
+
+    main_db.transaction();
+
+    QSqlQuery query;
+
+    // 删除相关的打卡记录
+    query.prepare("DELETE FROM records WHERE card_id = :id");
+    query.bindValue(":id", cardId);
+    if (!query.exec()) { main_db.rollback(); return false; }
+
+    // 删除理论成绩
+    query.prepare("DELETE FROM theory_results WHERE card_id = :id");
+    query.bindValue(":id", cardId);
+    if (!query.exec()) { main_db.rollback(); return false; }
+
+    // 删除预约
+    query.prepare("DELETE FROM appointments WHERE card_id = :id");
+    query.bindValue(":id", cardId);
+    if (!query.exec()) { main_db.rollback(); return false; }
+
+    // 最后删除学员记录
+    query.prepare("DELETE FROM students WHERE card_id = :id");
+    query.bindValue(":id", cardId);
+    if (!query.exec()) { main_db.rollback(); return false; }
+
+    main_db.commit();
+    return true;
 }
 
 QVariantList DbManager::getTheoryScores(){
