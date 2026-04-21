@@ -194,7 +194,7 @@ void TcpBackend::onReadyRead(){
                 int score = jsonObj.value("score").toInt();
                 int total = jsonObj.value("total").toInt();
                 QString deviceId = jsonObj.value("device_id").toString();
-                QString subject = jsonObj.value("subject").toString();
+                QString subject = jsonObj.value("Subject").toString();
 
                 if (cardId.isEmpty()) {
                     emit messageReceived("[警告] 答题数据异常!");
@@ -265,6 +265,9 @@ void TcpBackend::onReadyRead(){
 
                 socket->write(QJsonDocument(reply).toJson(QJsonDocument::Compact) + "\n");
             } else if (type == "appointment" || type == "appoint") {
+/*
+[收到车辆数据]{"CardID":"B3D10F07","Subject":"科目四","device_id":"100000005B105A9F","score":4,"sign":"2ad4262fde1c767b7cf3a344b11e9d64","timestamp":"1775634914","total":10,"type":"theory"}
+*/
                 // 设备端提交预约请求的处理（兼容多种键名）
                 QString cardId = jsonObj.value("CardID").toString();
                 // 兼容大小写与常见字段名
@@ -297,6 +300,9 @@ void TcpBackend::onReadyRead(){
             }
         }else{
             emit messageReceived("  -> [提示] 收到的非 JSON 标准格式数据，仅做展示，不存入数据库。");
+            // 此处断开连接，防止恶意数据占用资源
+            socket->disconnectFromHost();
+            return;
         }
     }
 }
@@ -426,14 +432,14 @@ QVariantList TcpBackend::getConnectedDevices() {
     return list;
 }
 
-// 学时进度计算
+// 学时进度计算 设每科 4 小时
 double TcpBackend::getStudentProgress(const QString &cardId, const QString &subject) {
     // DbManager::getStudentProgress 返回总秒数
     int totalSeconds = m_db.getStudentProgress(cardId, subject);
-    // 将学时归一化为 0..1（假设每科需 1 小时 = 3600 秒）
+    // 将学时归一化为 0..1（假设每科需 4 小时 = 14400 秒）
     double frac = 0.0;
     if (totalSeconds > 0) {
-        frac = double(totalSeconds) / 3600.0;
+        frac = double(totalSeconds) / 14400.0;
         if (frac > 1.0) frac = 1.0;
     }
     return frac;

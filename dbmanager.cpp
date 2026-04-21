@@ -29,23 +29,23 @@ bool DbManager::initDb(){
     QSqlQuery query;
     QString createTableSql = R"(
             CREATE TABLE IF NOT EXISTS students (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                card_id TEXT NOT NULL UNIQUE,
-                name TEXT NOT NULL,
-                total_seconds INTEGER DEFAULT 0
+                id INTEGER PRIMARY KEY AUTOINCREMENT, -- 自增主键
+                card_id TEXT NOT NULL UNIQUE, -- 卡号唯一约束
+                name TEXT NOT NULL, -- 学员姓名
+                total_seconds INTEGER DEFAULT 0 -- 总学时（秒）
             )
     )";
 
-    // 创建表: records (记录)
+    // 创建表: records (打卡记录)
     QString createRecordsSql = R"(
             CREATE TABLE IF NOT EXISTS records(
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                card_id TEXT NOT NULL,
-                action TEXT NOT NULL,
-                subject TEXT NOT NULL,
-                duration INTEGER DEFAULT 0,
-                device_id TEXT NOT NULL,
-                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+                id INTEGER PRIMARY KEY AUTOINCREMENT, -- 自增主键
+                card_id TEXT NOT NULL, -- 卡号
+                action TEXT NOT NULL, -- 动作
+                subject TEXT NOT NULL, -- 科目
+                duration INTEGER DEFAULT 0, -- 时长（秒）
+                device_id TEXT NOT NULL, -- 设备号
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP -- 时间戳
             )
     )";
 
@@ -254,7 +254,7 @@ QVariantList DbManager::getAppointments(){
     return list;
 }
 
-// 修改预约状态
+// 修改预约消息已读状态
 bool DbManager::updateAppointmentStatus(int appointmentId, int newStatus) {
     if (!main_db.isOpen()) return false;
 

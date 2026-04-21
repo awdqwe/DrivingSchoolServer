@@ -52,14 +52,14 @@ Item {
                             font.pixelSize: 16
                         }
 
-                        // 及格判定逻辑（假设 90 分及格）
+                        // 及格判定逻辑（假设 8 分及格）
                         Rectangle {
                             Layout.preferredWidth: 80; height: 26; radius: 13
-                            color: (model.score >= 90) ? "#e8f5e9" : "#ffebee"
+                            color: (model.score >= 8) ? "#e8f5e9" : "#ffebee"
                             Text {
                                 anchors.centerIn: parent
-                                text: (model.score >= 90) ? "合格" : "不合格"
-                                color: (model.score >= 90) ? "#2e7d32" : "#c62828"
+                                text: (model.score >= 8) ? "合格" : "不合格"
+                                color: (model.score >= 8) ? "#2e7d32" : "#c62828"
                                 font.pixelSize: 12
                             }
                         }
