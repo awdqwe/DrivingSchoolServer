@@ -6,6 +6,9 @@ import QtQuick.Controls 2.14
 Item {
     id: scorePage
     property var model: null
+    signal deleteScore(var item)
+    property int pendingDeleteId: -1 // 待删除记录的 ID，避免 index 不一致问题
+    property int pendingDeleteIndex: -1 // 待删除记录的 index，仅用于 UI 定位，实际删除通过 ID 进行
 
     ColumnLayout {
         anchors.fill: parent
@@ -35,6 +38,7 @@ Item {
                         Label { text: "考核结果"; Layout.preferredWidth: 120; font.bold: true }
                         Label { text: "科目"; Layout.preferredWidth: 120; font.bold: true }
                         Label { text: "提交时间"; Layout.fillWidth: true; font.bold: true }
+                        Label { text: "操作"; Layout.preferredWidth: 90; font.bold: true }
                     }
                 }
 
@@ -67,9 +71,95 @@ Item {
                         Label { text: model.subject ? model.subject : "-"; Layout.preferredWidth: 120 }
 
                         Label { text: model.time; Layout.fillWidth: true; color: "#95a5a6" }
+                        Button {
+                            text: "删除"
+                            Layout.preferredWidth: 80
+                            onClicked: {
+                                scorePage.pendingDeleteId = model.id
+                                scorePage.pendingDeleteIndex = index
+                                confirmDialog.open()
+                            }
+                        }
                     }
                 }
             }
         }
+    }
+
+    Dialog {
+        id: confirmDialog
+        property int idToDelete: -1
+        title: "确认删除成绩"
+        standardButtons: Dialog.NoButton
+        anchors.centerIn: parent
+        width: 360
+
+        ColumnLayout {
+            width: parent.width
+            spacing: 10
+
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                text: confirmDialog.idToDelete > 0
+                      ? ("确定要删除 ID 为 " + confirmDialog.idToDelete + " 的理论成绩记录吗？此操作不可恢复。")
+                      : "确定要删除该条理论成绩记录吗？此操作不可恢复。"
+            }
+
+            RowLayout {
+                Layout.alignment: Qt.AlignRight
+                spacing: 8
+
+                Button {
+                    text: "取消"
+                    onClicked: {
+                        confirmDialog.idToDelete = -1
+                        confirmDialog.close()
+                    }
+                }
+
+                Button {
+                    text: "确定"
+                    highlighted: true
+                    onClicked: {
+                        var id = confirmDialog.idToDelete
+                        if (id > 0) {
+                            var ok = backend.deleteTheoryResult(id)
+                            if (ok) {
+                                for (var i = 0; i < scoreListView.model.count; i++) {
+                                    if (scoreListView.model.get(i).id === id) {
+                                        scoreListView.model.remove(i)
+                                        break
+                                    }
+                                }
+                                confirmDialog.idToDelete = -1
+                                confirmDialog.close()
+                                return
+                            }
+                        }
+                        errorDialog.text = "删除失败，请检查日志或稍后重试。"
+                        errorDialog.open()
+                    }
+                }
+            }
+        }
+    }
+
+    Dialog {
+        id: errorDialog
+        title: "错误"
+        standardButtons: Dialog.NoButton
+        anchors.centerIn: parent
+        width: 320
+
+        ColumnLayout {
+            width: parent.width
+            spacing: 10
+            Label { id: errLabel; Layout.fillWidth: true; wrapMode: Text.WordWrap; text: "" }
+            RowLayout { Layout.alignment: Qt.AlignRight
+                Button { text: "确定"; onClicked: errorDialog.close() }
+            }
+        }
+        onOpened: { errLabel.text = errorDialog.text }
     }
 }

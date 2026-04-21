@@ -307,11 +307,12 @@ bool DbManager::deleteStudent(const QString &cardId) {
     return true;
 }
 
+// 获取理论成绩列表
 QVariantList DbManager::getTheoryScores(){
     QVariantList list;
     // LEFT JOIN 关联学生姓名
     QString sql = R"(
-        SELECT s.name, t.score, t.total, t.subject, t.timestamp
+        SELECT t.id, s.name, t.score, t.total, t.subject, t.timestamp -- 理论成绩记录表和学生表的字段
         FROM theory_results t
         LEFT JOIN students s ON t.card_id = s.card_id
         ORDER BY t.timestamp DESC
@@ -319,14 +320,24 @@ QVariantList DbManager::getTheoryScores(){
     QSqlQuery query(sql);
     while(query.next()){
         QVariantMap map;
-        map["name"] = query.value(0).toString();
-        map["score"] = query.value(1).toInt();
-        map["total"] = query.value(2).toInt();
-        map["subject"] = query.value(3).toString();
-        map["time"] = query.value(4).toString();
+        map["id"] = query.value(0).toInt();
+        map["name"] = query.value(1).toString();
+        map["score"] = query.value(2).toInt();
+        map["total"] = query.value(3).toInt();
+        map["subject"] = query.value(4).toString();
+        map["time"] = query.value(5).toString();
         list.append(map);
     }
     return list;
+}
+
+// 删除指定的理论成绩记录
+bool DbManager::deleteTheoryResult(int id){
+    if (!main_db.isOpen()) return false;
+    QSqlQuery query;
+    query.prepare("DELETE FROM theory_results WHERE id = :id");
+    query.bindValue(":id", id);
+    return query.exec();
 }
 
 int DbManager::getStudentProgress(const QString &cardId, const QString &subject){

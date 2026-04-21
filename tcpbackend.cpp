@@ -22,9 +22,8 @@ TcpBackend::TcpBackend(QObject *parent) : QObject(parent){
     connect(m_server, &QTcpServer::newConnection, this, &TcpBackend::onNewConnection);
 
     // 初始化DB
-    if (m_db.initDb()) {
-        qDebug() << "TCP后端引擎：数据库挂载成功！";
-    }
+    if (m_db.initDb()) qDebug() << "TCP后端引擎：数据库挂载成功！";
+        else qDebug() << "TCP后端引擎：数据库挂载失败！";
 
     // 启动检查定时器
     m_checkTimer = new QTimer(this);
@@ -557,4 +556,16 @@ void TcpBackend::sendControlToDevice(QString deviceId, QString cmd) {
     }
 
     emit messageReceived(QString("[定向指令失败] 设备已断开: %1").arg(deviceId));
+}
+
+// 删除指定的理论成绩记录
+bool TcpBackend::deleteTheoryResult(int id) {
+    bool ok = m_db.deleteTheoryResult(id);
+    if (ok) {
+        emit messageReceived(QString("[系统] 已删除理论成绩记录: %1").arg(id));
+        emit databaseUpdated();
+    } else {
+        emit messageReceived(QString("[错误] 删除理论成绩失败: %1").arg(id));
+    }
+    return ok;
 }

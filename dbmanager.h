@@ -82,6 +82,8 @@ public:
     bool deleteAppointment(int appointmentId);
     // 获取理论成绩列表
     QVariantList getTheoryScores();
+    // 删除指定的理论成绩记录
+    Q_INVOKABLE bool deleteTheoryResult(int id);
 
     // 获取/查询所有历史记录
     QVariantList getAllRecords();
