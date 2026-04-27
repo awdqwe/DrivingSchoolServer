@@ -22,6 +22,7 @@ ScrollView {
         anchors.topMargin: 20
         spacing: 25
 
+        // 左上角 标题
         Label {
             text: "系统概览"
             font.pixelSize: 24
@@ -29,73 +30,7 @@ ScrollView {
             color: "#2c3e50"
         }
 
-        // 第一行：统计卡片
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 20
-
-            // 卡片模板定义（内部）
-            Component {
-                id: statusCardComponent
-                Rectangle {
-                    property string title: ""
-                    property string value: ""
-                    property color themeColor: "#3498db"
-                    property string iconTxt: ""
-
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 120
-                    radius: 10
-                    color: "white"
-                    layer.enabled: true
-
-                    RowLayout {
-                        anchors.fill: parent; anchors.margins: 20
-                        Column {
-                            Layout.fillWidth: true
-                            spacing: 10
-                            Label { text: title; color: "#7f8c8d"; font.pixelSize: 14 }
-                            Label { text: value; color: "#2c3e50"; font.pixelSize: 28; font.bold: true }
-                        }
-                        Text {
-                            text: iconTxt; font.pixelSize: 40; color: themeColor; opacity: 0.2
-                        }
-                    }
-                }
-            }
-
-            Loader {
-                sourceComponent: statusCardComponent
-                onLoaded: {
-                    item.title = "服务器状态"
-                    item.value = isRunning ? "已启动" : "未就绪"
-                    item.themeColor = isRunning ? "#2ecc71" : "#e74c3c"
-                    item.iconTxt = "⚙"
-                }
-            }
-
-            Loader {
-                sourceComponent: statusCardComponent
-                onLoaded: {
-                    item.title = "当前在线设备"
-                    item.value = activeCount + " 台"
-                    item.themeColor = "#3498db"
-                    item.iconTxt = "🚗"
-                }
-            }
-
-            Loader {
-                sourceComponent: statusCardComponent
-                onLoaded: {
-                    item.title = "累计训练次数"
-                    item.value = historyCount + " 次"
-                    item.themeColor = "#9b59b6"
-                    item.iconTxt = "📊"
-                }
-            }
-        }
-
-        // 第二行：操作区与服务器控制
+        // 启动服务卡片
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 200
@@ -140,7 +75,7 @@ ScrollView {
             }
         }
 
-        // 第三行：快捷通知
+        // 系统提示卡片
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 100
@@ -152,7 +87,11 @@ ScrollView {
                 anchors.fill: parent
                 anchors.margins: 20
                 spacing: 15
-                Text { text: "ℹ"; font.pixelSize: 20; color: "#3498db" }
+                Image {
+                    source: "qrc:/res/ico/icon.ico"
+                    width: 20; height: 20
+                    fillMode: Image.PreserveAspectFit
+                }
                 Label {
                     text: "系统提示：共有 " + historyCount + " 条打卡记录，请及时查看异常记录。"
                     color: "#2980b9"

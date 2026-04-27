@@ -54,7 +54,13 @@ Item {
                         Layout.fillWidth: true
                         Rectangle {
                             width: 40; height: 40; radius: 20; color: "#ebf5fb"
-                            Text { anchors.centerIn: parent; text: "🚗"; font.pixelSize: 20 }
+                            // 车辆图标，使用资源中的图片
+                            Image {
+                                anchors.centerIn: parent
+                                source: "qrc:/res/ico/car.ico"
+                                width: 20; height: 20
+                                fillMode: Image.PreserveAspectFit
+                            }
                         }
                         Column {
                             Label { text: "终端编号: " + model.device_id; font.bold: true }

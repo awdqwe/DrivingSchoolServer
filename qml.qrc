@@ -27,5 +27,6 @@
         <file>ico/log.ico</file>
         <file>ico/score.ico</file>
         <file>ico/card.ico</file>
+        <file>ico/car.ico</file>
     </qresource>
 </RCC>

@@ -1,6 +1,7 @@
 #include "dbmanager.h"
 #include <QDir>
 #include <QCoreApplication>
+#include <QDateTime>
 
 DbManager::DbManager(QObject *parent) : QObject(parent){}
 
@@ -200,7 +201,13 @@ QVariantList DbManager::getAllRecords(){
         map["card_id"] = query.value(2).toString();
         map["action"] = query.value(3).toString();
         map["duration"] = query.value(4).toInt();
-        map["timestamp"] = query.value(5).toString();
+        QString ts = query.value(5).toString(); // 数据库中的 UTC 时间字符串
+        QDateTime dt = QDateTime::fromString(ts, "yyyy-MM-dd HH:mm:ss");
+        if (dt.isValid()) {
+            dt.setTimeSpec(Qt::UTC);
+            ts = dt.toLocalTime().toString("yyyy-MM-dd HH:mm:ss");
+        }
+        map["timestamp"] = ts;
         list.append(map);
     }
     return list;
@@ -248,7 +255,13 @@ QVariantList DbManager::getAppointments(){
         map["subject"] = query.value(3).toString();
         map["date"] = query.value(4).toString();
         map["status"] = query.value(5).toInt();
-        map["received_time"] = query.value(6).toString();
+        QString rts = query.value(6).toString();
+        QDateTime rdt = QDateTime::fromString(rts, "yyyy-MM-dd HH:mm:ss");
+        if (rdt.isValid()) {
+            rdt.setTimeSpec(Qt::UTC);
+            rts = rdt.toLocalTime().toString("yyyy-MM-dd HH:mm:ss");
+        }
+        map["received_time"] = rts;
         list.append(map);
     }
     return list;
@@ -325,7 +338,13 @@ QVariantList DbManager::getTheoryScores(){
         map["score"] = query.value(2).toInt();
         map["total"] = query.value(3).toInt();
         map["subject"] = query.value(4).toString();
-        map["time"] = query.value(5).toString();
+        QString ts = query.value(5).toString();
+        QDateTime dt = QDateTime::fromString(ts, "yyyy-MM-dd HH:mm:ss");
+        if (dt.isValid()) {
+            dt.setTimeSpec(Qt::UTC);
+            ts = dt.toLocalTime().toString("yyyy-MM-dd HH:mm:ss");
+        }
+        map["time"] = ts;
         list.append(map);
     }
     return list;

@@ -41,7 +41,7 @@ Item {
                         Label { text: "操作"; Layout.preferredWidth: 90; font.bold: true }
                     }
                 }
-
+                // 定义成绩记录的外观和布局
                 delegate: Rectangle {
                     width: scoreListView.width; height: 55
                     color: index % 2 === 0 ? "white" : "#fafafa"
