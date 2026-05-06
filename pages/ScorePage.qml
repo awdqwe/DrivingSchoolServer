@@ -128,8 +128,7 @@ Item {
                             if (ok) {
                                 for (var i = 0; i < scoreListView.model.count; i++) {
                                     if (scoreListView.model.get(i).id === id) {
-                                        scoreListView.model.remove(i)
-                                        break
+                                        scoreListView.model.remove(i);break
                                     }
                                 }
                                 confirmDialog.idToDelete = -1

@@ -4,10 +4,81 @@ import QtQuick.Layouts 1.14
 
 Rectangle {
     id: loginRoot
-    color: "#2c3e50"
-    signal loginSuccess(string username) // 登录成功信号，传递用户名
+    gradient: Gradient {
+        GradientStop { position: 0.0; color: "#2c3e50" }
+        GradientStop { position: 0.5; color: "#34495e" }
+        GradientStop { position: 1.0; color: "#22313f" }
+    }
 
+    signal loginSuccess(string username) // 登录成功信号，传递用户名
     property bool isRegisterMode: false
+
+    // 几何图形装饰
+    Rectangle {
+        width: 260
+        height: 260
+        radius: 130
+        color: "white"
+        opacity: 0.04
+        anchors.left: parent.left
+        anchors.top: parent.top
+        anchors.margins: -80
+        rotation: 18
+    }
+
+    Rectangle {
+        width: 180
+        height: 180
+        radius: 30
+        color: "white"
+        opacity: 0.06
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: -40
+        rotation: 32
+    }
+
+    Rectangle {
+        width: 120
+        height: 120
+        radius: 60
+        color: "white"
+        opacity: 0.03
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.margins: 60
+    }
+    // LOGO和标题
+    Row {
+        spacing: 18
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.top: parent.top
+        anchors.margins: 45 // 顶部间距
+
+        Image {
+            source: "qrc:/res/ico/overlay.png"
+            width: 296; height: 70
+            fillMode: Image.PreserveAspectFit
+            smooth: true
+            anchors.verticalCenter: parent.verticalCenter
+        }
+
+        Column {
+            spacing: 4 // 标题和副标题间距
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.verticalCenterOffset: 2 // 微调垂直位置
+            Label {
+                text: "驾校智能管理中枢"
+                color: "white"
+                font.pixelSize: 28; font.bold: true // 主标题
+            }
+            Label {
+                text: "Driving School Smart Management Center"
+                color: "white"
+                font.pixelSize: 16 // 副标题
+            }
+        }
+    }
 
     ColumnLayout {
         anchors.centerIn: parent

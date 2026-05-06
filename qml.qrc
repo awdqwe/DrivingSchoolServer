@@ -28,5 +28,6 @@
         <file>ico/score.ico</file>
         <file>ico/card.ico</file>
         <file>ico/car.ico</file>
+        <file>ico/overlay.png</file>
     </qresource>
 </RCC>
